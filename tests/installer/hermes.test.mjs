@@ -2,7 +2,7 @@
 //
 // Hermes loads skills from <HERMES_HOME>/skills/<category>/<skill>/SKILL.md
 // (verified against a live `hermes skills list`). The installer copies the 7
-// caveman skill dirs into the `productivity/` category. `--only hermes` makes
+// sweet skill dirs into the `productivity/` category. `--only hermes` makes
 // the provider explicit, so no `hermes` binary needs to be on PATH for the
 // dispatch to run — we drive it purely through a throwaway HERMES_HOME.
 //
@@ -22,10 +22,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const INSTALLER = path.join(REPO_ROOT, 'bin', 'install.js');
 
-const SKILLS = ['caveman', 'caveman-commit', 'caveman-review', 'caveman-help', 'caveman-stats', 'caveman-compress', 'cavecrew'];
+const SKILLS = ['sweet', 'sweet-commit', 'sweet-review', 'sweet-help', 'sweet-stats', 'sweet-compress', 'sweetcrew'];
 
 function freshHome() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'caveman-hermes-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'sweet-hermes-'));
 }
 
 function runInstaller(args, hermesHome) {
@@ -50,15 +50,15 @@ test('hermes fresh install lands 7 skill dirs with SKILL.md under skills/product
     for (const name of SKILLS) {
       assert.ok(fs.existsSync(path.join(prod, name, 'SKILL.md')), `skill ${name}/SKILL.md missing`);
     }
-    // caveman-compress ships executable scripts — ensure the recursive copy kept them.
-    assert.ok(fs.existsSync(path.join(prod, 'caveman-compress', 'scripts')), 'caveman-compress/scripts/ not copied');
+    // sweet-compress ships executable scripts — ensure the recursive copy kept them.
+    assert.ok(fs.existsSync(path.join(prod, 'sweet-compress', 'scripts')), 'sweet-compress/scripts/ not copied');
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
 });
 
 // ── 2. Uninstall removes every skill we installed (regression guard for #524) ──
-test('hermes uninstall removes all installed caveman skills (no orphans)', () => {
+test('hermes uninstall removes all installed sweet skills (no orphans)', () => {
   const home = freshHome();
   try {
     const r1 = runInstaller(['--only', 'hermes'], home);

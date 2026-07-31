@@ -1,21 +1,21 @@
-// caveman — opencode plugin
+// sweet — opencode plugin
 //
-// Provides dynamic caveman mode tracking for opencode:
+// Provides dynamic sweet mode tracking for opencode:
 // - Writes the mode flag on each session start (via the `event` dispatcher)
-// - Parses user messages for /caveman commands and natural-language toggles
+// - Parses user messages for /sweet commands and natural-language toggles
 // - Injects per-turn reinforcement into the system prompt
 //
 // Bun ESM module; loads the existing security-hardened helpers from
-// caveman-config.js via createRequire so the symlink-safe flag-write code
+// sweet-config.js via createRequire so the symlink-safe flag-write code
 // lives in one place.
 //
 // Layout once installed:
-//   ~/.config/opencode/plugins/caveman/
+//   ~/.config/opencode/plugins/sweet-agent/
 //   ├── package.json
 //   ├── plugin.js              ← this file
-//   └── caveman-config.cjs     ← copied sibling of src/hooks/caveman-config.js
+//   └── sweet-config.cjs     ← copied sibling of src/hooks/sweet-config.js
 //
-// The always-on caveman ruleset is provided separately via
+// The always-on sweet ruleset is provided separately via
 // ~/.config/opencode/AGENTS.md (Tier-3 base). This plugin handles dynamic
 // state only: flag writes, slash-command parsing, natural-language
 // activation, and per-turn reinforcement.
@@ -30,8 +30,8 @@
 // as named plugin-hook keys. 'session.created' is an event *type* dispatched
 // through the single `event` handler; the old direct-key handlers were
 // silently ignored. See:
-// https://github.com/JuliusBrussee/caveman/issues/418
-// https://github.com/JuliusBrussee/caveman/issues/421
+// https://github.com/HDomi/sweet-agent/issues/418
+// https://github.com/HDomi/sweet-agent/issues/421
 
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -42,11 +42,11 @@ import path from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-// When installed: caveman-config.cjs sits next to plugin.js (copied by
+// When installed: sweet-config.cjs sits next to plugin.js (copied by
 // bin/install.js, renamed to .cjs because this directory's package.json
 // declares "type": "module" — bare .js would be loaded as ESM). When loaded
 // from the source tree (tests, dev): fall back to the canonical
-// src/hooks/caveman-config.js, which lives in a directory whose own
+// src/hooks/sweet-config.js, which lives in a directory whose own
 // package.json pins "type": "commonjs". One source of truth either way.
 //
 // Loaded by evaluating the file as CommonJS by hand, NOT via the module
@@ -55,10 +55,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 // unsupported") and await import() of a CJS file yields an empty namespace —
 // both silently break the plugin (#418 follow-up). createRequire() still
 // resolves node BUILT-INS fine in the compiled binary, which is all
-// caveman-config needs (fs/path/os).
+// sweet-config needs (fs/path/os).
 function loadConfig() {
-  const installed = join(here, 'caveman-config.cjs');
-  const dev = join(here, '..', '..', 'hooks', 'caveman-config.js');
+  const installed = join(here, 'sweet-config.cjs');
+  const dev = join(here, '..', '..', 'hooks', 'sweet-config.js');
   const target = existsSync(installed) ? installed : dev;
   const code = readFileSync(target, 'utf8').replace(/^#![^\n]*\n/, '');
   const mod = { exports: {} };
@@ -71,7 +71,7 @@ const config = loadConfig();
 
 const { getDefaultMode, safeWriteFlag, readFlag, VALID_MODES } = config;
 
-// Modes handled by independent skills — not selectable via /caveman <arg>.
+// Modes handled by independent skills — not selectable via /sweet <arg>.
 const INDEPENDENT_MODES = new Set(['commit', 'review', 'compress']);
 
 // opencode resolves its config dir from $XDG_CONFIG_HOME, else ~/.config/opencode
@@ -85,21 +85,22 @@ function opencodeConfigDir() {
   return path.join(os.homedir(), '.config', 'opencode');
 }
 
-const flagPath = path.join(opencodeConfigDir(), '.caveman-active');
+const flagPath = path.join(opencodeConfigDir(), '.sweet-active');
 
 function reinforcementLine(mode) {
-  return 'CAVEMAN MODE ACTIVE (' + mode + '). ' +
-    'Drop articles/filler/pleasantries/hedging. Fragments OK. ' +
-    'Code/commits/security: write normal.';
+  return 'SWEET MODE ACTIVE (' + mode + '). ' +
+    "한국어 반말로만 답한다. 호칭 '오빠'는 응답당 0~1번. " +
+    '조사·군더더기·상투어·완충 표현 버린다. 단문 OK. ' +
+    '코드·커밋 메시지·보안 경고는 평문.';
 }
 
 // Parse a prompt for slash-command activation or natural-language toggles.
 // Returns the new mode to write, the literal string 'off' to deactivate, or
-// null when the prompt doesn't change state. Mirrors caveman-mode-tracker.js.
+// null when the prompt doesn't change state. Mirrors sweet-mode-tracker.js.
 function parseModeChange(promptRaw) {
   let prompt = (promptRaw || '').trim();
   // opencode's non-interactive `run` path delivers the message wrapped in
-  // literal quote characters ("/caveman ultra"\n) — unwrap symmetric quotes
+  // literal quote characters ("/sweet ultra"\n) — unwrap symmetric quotes
   // so the slash-command branch still matches.
   const wrapped = /^(["'`])([\s\S]*)\1$/.exec(prompt);
   if (wrapped) prompt = wrapped[2].trim();
@@ -107,50 +108,60 @@ function parseModeChange(promptRaw) {
   if (!prompt) return null;
 
   // Natural-language deactivation — checked before activation so "stop talking
-  // like caveman" doesn't trip the activation regex.
-  if (/\b(stop|disable|deactivate|turn off)\b.*\bcaveman\b/i.test(prompt) ||
-      /\bcaveman\b.*\b(stop|disable|deactivate|turn off)\b/i.test(prompt) ||
-      /\bnormal mode\b/i.test(prompt)) {
+  // like sweet" doesn't trip the activation regex.
+  if (/\b(stop|disable|deactivate|turn off)\b.*\bsweet\b/i.test(prompt) ||
+      /\bsweet\b.*\b(stop|disable|deactivate|turn off)\b/i.test(prompt) ||
+      /\bnormal mode\b/i.test(prompt) ||
+      // Korean deactivation — mirrors sweet-mode-tracker.js.
+      /(스윗|스위트)\s*(모드)?\s*(끄기|꺼줘|꺼|끄고|해제|그만|중단|off)/.test(prompt) ||
+      /(일반|보통|평소)\s*모드/.test(prompt) ||
+      /존댓말(로|으로)?\s*(해|말해|답해|바꿔|써)/.test(prompt) ||
+      /^(스윗\s*)?그만\s*(해|하자|해줘)?\s*[.!]*$/.test(prompt)) {
     return 'off';
   }
 
-  // Expanded /caveman command template. opencode replaces a typed
-  // "/caveman <level>" with the command file's body ("Activate caveman
+  // Expanded /sweet command template. opencode replaces a typed
+  // "/sweet <level>" with the command file's body ("Activate sweet
   // mode: $ARGUMENTS ...") before chat.message fires, so the literal
   // slash-command branch below never sees it — recover the level argument
   // from the template's first line instead. Must run before the generic
   // NL-activation match, which would swallow it and drop the level.
-  const tpl = /^activate caveman mode:[ \t]*(\S*)/.exec(prompt);
+  const tpl = /^activate sweet mode:[ \t]*(\S*)/.exec(prompt);
   if (tpl) {
     const arg = tpl[1] || '';
     if (arg === 'off' || arg === 'stop' || arg === 'disable') return 'off';
-    if (arg === 'wenyan-full') return 'wenyan';
     if (VALID_MODES.includes(arg) && !INDEPENDENT_MODES.has(arg)) return arg;
     return getDefaultMode();
   }
 
   // Natural-language activation
-  if (/\b(activate|enable|turn on|start|talk like)\b.*\bcaveman\b/i.test(prompt) ||
-      /\bcaveman\b.*\b(mode|activate|enable|turn on|start)\b/i.test(prompt)) {
+  if (/\b(activate|enable|turn on|start|talk like)\b.*\bsweet\b/i.test(prompt) ||
+      /\bsweet\b.*\b(mode|activate|enable|turn on|start)\b/i.test(prompt) ||
+      // Korean activation — mirrors sweet-mode-tracker.js.
+      /(스윗|스위트)\s*(모드)?\s*(켜|켜줘|활성|시작|on)/.test(prompt) ||
+      /^(스윗|스위트)(\s*모드)?\s*[.!]*$/.test(prompt) ||
+      /(다정하게|귀엽게|애교|사근사근)\s*(말해|답해|얘기해|해줘|해)/.test(prompt) ||
+      /반말(로|루)?\s*(해|말해|답해|얘기해|해줘|써)/.test(prompt) ||
+      /(짧게|간단히|간결하게|간략히)\s*(말해|답해|얘기해|대답|해줘)/.test(prompt) ||
+      /토큰\s*(좀\s*)?(아껴|아끼|절약|줄여)/.test(prompt)) {
     const mode = getDefaultMode();
     return mode === 'off' ? null : mode;
   }
 
   // Slash-command parsing — opencode also expands command files, but if the
   // user types the literal slash command we still want to flip the flag.
-  if (prompt.startsWith('/caveman')) {
+  if (prompt.startsWith('/sweet')) {
     const parts = prompt.split(/\s+/);
     const cmd = parts[0];
     const arg = parts[1] || '';
 
-    if (cmd === '/caveman-commit')   return 'commit';
-    if (cmd === '/caveman-review')   return 'review';
-    if (cmd === '/caveman-compress') return 'compress';
+    if (cmd === '/sweet-commit')   return 'commit';
+    if (cmd === '/sweet-review')   return 'review';
+    if (cmd === '/sweet-compress') return 'compress';
 
-    if (cmd === '/caveman') {
+    if (cmd === '/sweet') {
       if (!arg)                                     return getDefaultMode();
       if (arg === 'off' || arg === 'stop' || arg === 'disable') return 'off';
-      if (arg === 'wenyan-full')                    return 'wenyan';
       if (VALID_MODES.includes(arg) && !INDEPENDENT_MODES.has(arg)) return arg;
       // Unknown arg — leave flag alone. No silent overwrite.
       return null;
@@ -181,7 +192,7 @@ function handleSessionCreated() {
   safeWriteFlag(flagPath, mode);
 }
 
-export const CavemanPlugin = async (_ctx) => {
+export const SweetPlugin = async (_ctx) => {
   // Assert the flag at plugin load as well: in one-shot `opencode run` the
   // first session.created publishes before plugin event dispatch is wired,
   // so the event handler alone misses it. The factory-time write covers that
@@ -199,7 +210,7 @@ export const CavemanPlugin = async (_ctx) => {
     if (event && event.type === 'session.created') handleSessionCreated();
   },
 
-  // Intercept user messages to detect /caveman commands and natural-language
+  // Intercept user messages to detect /sweet commands and natural-language
   // mode toggles. opencode fires chat.message with (input, output) where
   // output.parts is the array of message parts; text parts carry .text.
   // Return value is ignored — state changes happen via the flag file.
@@ -213,7 +224,7 @@ export const CavemanPlugin = async (_ctx) => {
     }
   },
 
-  // Inject the reinforcement line into the system prompt when caveman is
+  // Inject the reinforcement line into the system prompt when sweet is
   // active. opencode calls this before every LLM request and expects the hook
   // to mutate output.system (a string[]); the return value is discarded.
   'experimental.chat.system.transform': async (_input, output) => {
@@ -226,4 +237,4 @@ export const CavemanPlugin = async (_ctx) => {
   };
 };
 
-export default CavemanPlugin;
+export default SweetPlugin;

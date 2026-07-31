@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests for src/mcp-servers/caveman-shrink/compress.js — pure-Node prose compressor.
+// Tests for src/mcp-servers/sweet-shrink/compress.js — pure-Node prose compressor.
 // Run: node tests/test_mcp_shrink.js
 
 const fs = require('fs');
@@ -8,10 +8,10 @@ const assert = require('assert');
 
 const ROOT = path.resolve(__dirname, '..');
 const { compress, compressDescriptionsInPlace } = require(
-  path.join(ROOT, 'src', 'mcp-servers', 'caveman-shrink', 'compress.js')
+  path.join(ROOT, 'src', 'mcp-servers', 'sweet-shrink', 'compress.js')
 );
 const { getSpawnOptions } = require(
-  path.join(ROOT, 'src', 'mcp-servers', 'caveman-shrink', 'spawn-options.js')
+  path.join(ROOT, 'src', 'mcp-servers', 'sweet-shrink', 'spawn-options.js')
 );
 
 let passed = 0;
@@ -190,7 +190,7 @@ test('preserves enum values inside parens (nested sentinel restoration — #444)
 // The package is flat, so "files" entries are exact filenames, not globs.
 
 test('package.json "files" ships every module the entry points require (#597)', () => {
-  const pkgDir = path.join(ROOT, 'src', 'mcp-servers', 'caveman-shrink');
+  const pkgDir = path.join(ROOT, 'src', 'mcp-servers', 'sweet-shrink');
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
   const shipped = new Set((pkg.files || []).map(f => path.normalize(f)));
 

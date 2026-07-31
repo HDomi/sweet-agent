@@ -1,0 +1,31 @@
+{
+  "name": "sweet-shrink",
+  "version": "0.1.1",
+  "description": "MCP proxy that compresses prose fields (tool descriptions, etc.) using sweet rules. Same accuracy, fewer context tokens.",
+  "license": "MIT",
+  "homepage": "https://github.com/HDomi/sweet-agent",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HDomi/sweet-agent.git",
+    "directory": "src/mcp-servers/sweet-shrink"
+  },
+  "author": "HDomi",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "sweet",
+    "proxy",
+    "tokens"
+  ],
+  "main": "compress.js",
+  "bin": {
+    "sweet-shrink": "index.js"
+  },
+  "files": [
+    "index.js",
+    "compress.js",
+    "spawn-options.js",
+    "README.md"
+  ]
+}

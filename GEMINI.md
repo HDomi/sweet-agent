@@ -1,4 +1,4 @@
-@./skills/caveman/SKILL.md
-@./skills/caveman-commit/SKILL.md
-@./skills/caveman-review/SKILL.md
-@./skills/caveman-compress/SKILL.md
+@./skills/sweet/SKILL.md
+@./skills/sweet-commit/SKILL.md
+@./skills/sweet-review/SKILL.md
+@./skills/sweet-compress/SKILL.md

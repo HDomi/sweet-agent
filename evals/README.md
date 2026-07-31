@@ -1,6 +1,6 @@
 # Evals
 
-Measures real token compression of caveman skills by running the same
+Measures real token compression of sweet skills by running the same
 prompts through Claude Code under three conditions and comparing the
 generated output token counts.
 
@@ -49,7 +49,7 @@ This calls Claude once per prompt × (N skills + 2 control arms). Use
 a small model to keep it cheap:
 
 ```bash
-CAVEMAN_EVAL_MODEL=claude-haiku-4-5 uv run python evals/llm_run.py
+SWEET_EVAL_MODEL=claude-haiku-4-5 uv run python evals/llm_run.py
 ```
 
 ## Read the snapshot (no LLM, no API key, runs in CI)
@@ -82,3 +82,24 @@ picks up every skill directory automatically.
 - **Statistical significance** — single run per (prompt, arm) at default
   temperature. The min/max/stdev columns let you eyeball whether a
   number is solid or noisy, but this is not a powered experiment.
+
+## Snapshot status (sweet-agent fork)
+
+**There is no committed snapshot.** `evals/snapshots/results.json` is absent, so `measure.py` prints
+`No snapshot ... Run python evals/llm_run.py first.` and exits cleanly.
+
+The inherited snapshot was moved to `evals/snapshots/upstream-caveman-en.reference.json` because it was
+upstream **caveman** data, not sweet-agent data. Its arms were named `caveman` / `caveman-cn` /
+`caveman-es` and the rebrand sed renamed them to `sweet` / `sweet-cn` / `sweet-es` — but the outputs are
+English, Chinese, and Spanish caveman prose measured against the old English SKILL.md
+(`claude-opus-4-6`, 2026-04-08), and `sweet-cn` / `sweet-es` have no corresponding skill in this repo.
+Left in place it would have made `measure.py` report three skills this project does not have, with
+compression measured on the wrong language.
+
+To produce real numbers:
+
+1. Write Korean prompts into `evals/prompts/` (`en.txt` is still the inherited English set).
+2. Run `python evals/llm_run.py` — it auto-discovers arms from `skills/*/SKILL.md`.
+3. Commit the regenerated `evals/snapshots/results.json`.
+
+Remember the honest delta is **skill vs `__terse__`**, not skill vs `__baseline__`.

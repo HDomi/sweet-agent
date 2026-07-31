@@ -1,324 +1,210 @@
 <p align="center">
-  <img src="docs/assets/caveman-logo-banner.png" alt="Caveman" width="720">
+  <strong>말 짧게 해도 다 알아들어</strong>
 </p>
 
 <p align="center">
-  <strong>why use many token when few do trick</strong>
+  AI 코딩 에이전트가 20대 여자애처럼 다정한 반말로 답하게 만든다.<br>
+  답은 똑같이 정확하고, <strong>말은 짧아진다</strong>. 머리는 그대로, 입만 작아짐.
 </p>
 
 <p align="center">
-  Make your AI coding agent talk like a caveman.<br>
-  Same answers, <strong>65% fewer output tokens</strong>. Brain still big. Mouth small.
+  <a href="./INSTALL.md"><img src="https://img.shields.io/badge/%EC%A7%80%EC%9B%90-30%2B%20%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8-ff69b4?style=flat" alt="30+ 에이전트"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="License"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/JuliusBrussee/caveman/stargazers"><img src="https://img.shields.io/github/stars/JuliusBrussee/caveman?style=flat&color=yellow" alt="Stars"></a>
-  <a href="./INSTALL.md"><img src="https://img.shields.io/badge/works_with-30%2B_agents-orange?style=flat" alt="30+ agents"></a>
-  <a href="https://github.com/JuliusBrussee/caveman/commits/main"><img src="https://img.shields.io/github/last-commit/JuliusBrussee/caveman?style=flat" alt="Last commit"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/JuliusBrussee/caveman?style=flat" alt="License"></a>
-</p>
-
-<p align="center">
-  <a href="#before--after">See it</a> ·
-  <a href="#install">Install</a> ·
-  <a href="#pick-your-grunt">Levels</a> ·
-  <a href="#what-you-get">What you get</a> ·
-  <a href="#benchmarks">Benchmarks</a> ·
-  <a href="#the-whole-cave">Ecosystem</a> ·
-  <a href="#caveman-2">Caveman 2</a>
+  <a href="#before--after">보기</a> ·
+  <a href="#설치">설치</a> ·
+  <a href="#강도-고르기">강도</a> ·
+  <a href="#뭐가-들어있나">기능</a> ·
+  <a href="#숫자에-대해">숫자</a> ·
+  <a href="#어떻게-동작하나">동작 방식</a>
 </p>
 
 ---
 
-Caveman is a skill/plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Codex, Gemini, Cursor, Windsurf, Cline, Copilot, and 30+ other agents. Install once. Agent drops the filler and answers in tight caveman-speak, keeping code, commands, and errors byte-for-byte exact. You save output tokens on every reply, forever.
+sweet-agent 는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Codex, Gemini CLI, Cursor, Windsurf, Cline, Copilot 등 30여 개 에이전트용 스킬/플러그인이다. 한 번 설치하면 에이전트가 군더더기를 버리고 짧은 한국어 반말로 답한다. 코드, 명령어, 에러 메시지는 한 글자도 안 바뀐다.
 
 ## Before / After
 
 <table>
 <tr>
-<th width="50%">🗣️ Normal agent — 69 tokens</th>
-<th width="50%"><img src="docs/assets/dancing-rock.svg" width="18" height="18" alt=""> Caveman agent — 19 tokens</th>
+<th width="50%">🗣️ 평범한 에이전트</th>
+<th width="50%">🍬 sweet-agent</th>
 </tr>
 <tr>
 <td valign="top">
 
-> The reason your React component is re-rendering is likely because you're creating a new object reference on each render cycle. When you pass an inline object as a prop, React's shallow comparison sees it as a different object every time, which triggers a re-render. I'd recommend using useMemo to memoize the object.
+> React 컴포넌트가 리렌더링되는 이유는 렌더링 사이클마다 새로운 객체 참조가 생성되고 있기 때문일 가능성이 높습니다. 인라인 객체를 prop으로 전달하면 React의 얕은 비교가 매번 다른 객체로 인식하여 리렌더링이 발생합니다. useMemo를 사용해 객체를 메모이제이션하는 것을 권장합니다.
 
 </td>
 <td valign="top">
 
-> New object ref each render. Inline object prop = new ref = re-render. Wrap in `useMemo`.
+> 렌더마다 새 객체 참조 생겨. 인라인 객체 prop = 새 참조 = 리렌더. `useMemo`로 감싸 오빠~
 
 </td>
 </tr>
 <tr>
 <td valign="top">
 
-> Sure! I'd be happy to help you with that. The issue you're experiencing is most likely caused by your authentication middleware not properly validating the token expiry. Let me take a look and suggest a fix.
+> 네! 기꺼이 도와드리겠습니다. 지금 겪고 계신 문제는 인증 미들웨어가 토큰 만료를 제대로 검증하지 않아서 발생한 것으로 보입니다. 제가 한번 살펴보고 수정 방안을 제안해 드리겠습니다.
 
 </td>
 <td valign="top">
 
-> Bug in auth middleware. Token expiry check use `<` not `<=`. Fix:
+> 인증 미들웨어 버그야. 만료 검사가 `<=` 말고 `<` 써야 해. 고칠 부분:
 
 </td>
 </tr>
 </table>
 
-Same fix. Third of the words. Nothing technical lost.
+같은 내용. 3분의 1 길이. 기술적으로 빠진 것 없음.
 
-```
-┌────────────────────────────────────────────┐
-│   output tokens saved   █████████       65% │
-│   input tokens saved    ░░░░░░░░░         0% │
-│   technical accuracy    █████████      100% │
-│   vibes                 █████████       OOG │
-└────────────────────────────────────────────┘
-```
+머리를 작게 만드는 게 아니다. *입*을 작게 만드는 거다. 에이전트가 **아는 것**이 아니라 **말하는 것**만 줄인다.
 
-Caveman no make brain smaller. Caveman make *mouth* smaller. Shrinks what the agent **says**, not what it knows.
+## 설치
 
-## Install
-
-**One command. Finds every agent on your machine. Installs for each.**
+**명령 하나. 컴퓨터에 있는 에이전트를 찾아서 각각 설치한다.**
 
 ```bash
 # macOS · Linux · WSL · Git Bash
-curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/HDomi/sweet-agent/main/install.sh | bash
 ```
 
 ```powershell
 # Windows · PowerShell 5.1+
-irm https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/HDomi/sweet-agent/main/install.ps1 | iex
 ```
 
-~30 seconds. Needs Node ≥18. Skips agents you no have. Safe to re-run.
+30초 정도. Node 18 이상 필요. 없는 에이전트는 건너뛴다. 여러 번 실행해도 안전하다.
 
 > [!TIP]
-> **Turn it on:** type `/caveman` or say *"talk like caveman"*. **Turn it off:** say *"normal mode"*. On Claude Code, Codex, and Gemini it's already on from message one. No command needed.
+> **켜기:** `/sweet` 또는 *"다정하게 말해"*, *"반말로 해"*. **끄기:** *"스윗 끄기"*, *"그만"*, *"normal mode"*. Claude Code, Codex, Gemini, opencode, OpenClaw 에서는 첫 메시지부터 이미 켜져 있다.
 
 <details>
-<summary><strong>Install for one agent, or any of 30+ others</strong></summary>
+<summary><strong>에이전트 하나만 설치하거나, 30여 개 중에 골라 설치</strong></summary>
 
 <br>
 
-Every agent has its own path (plugin, extension, rule file, or `npx skills add`). The full per-agent matrix, all flags, dry-run, and uninstall live in **[INSTALL.md](./INSTALL.md)**. A few common ones:
+에이전트마다 경로가 다르다 (플러그인, 확장, 룰 파일, `npx skills add`). 에이전트별 전체 표, 모든 플래그, dry-run, 삭제는 **[INSTALL.md](./INSTALL.md)** 에 있다. 자주 쓰는 것 몇 개:
 
 ```bash
-# Claude Code plugin
-claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman
+# 무엇이 설치될지 먼저 보기 (아무것도 안 씀)
+curl -fsSL https://raw.githubusercontent.com/HDomi/sweet-agent/main/install.sh | bash -s -- --dry-run
 
-# Gemini CLI extension
-gemini extensions install https://github.com/JuliusBrussee/caveman
+# Gemini CLI 확장
+gemini extensions install https://github.com/HDomi/sweet-agent
 
-# Cursor / Windsurf / Cline / Codex / 30+ more, via the skills registry
-npx skills add JuliusBrussee/caveman -a cursor
+# Cursor / Windsurf / Cline / Codex 등 30여 개, skills 레지스트리 경유
+npx skills add HDomi/sweet-agent -a cursor
 ```
 
-**Install broke?** Open your agent in this repo and say: *"Read CLAUDE.md and INSTALL.md, install caveman for me."* Agent read repo, agent fix own brain. Snake eat tail.
-
 </details>
-
-## Pick your grunt
-
-Six levels. Switch anytime with `/caveman <level>`. Level sticks until you change it or the session ends.
-
-| Level | Same sentence, shrunk |
-|---|---|
-| *normal agent* | You should wrap the object in `useMemo`, since a new reference is created on every render. |
-| `lite` | Wrap object in `useMemo`. New ref created every render. |
-| `full` *(default)* | New ref each render. Wrap object in `useMemo`. |
-| `ultra` | New ref/render. `useMemo` it. |
-| `wenyan` | New ref every render, so wrap in `useMemo` — rendered in classical Chinese, shorter still. |
 
 > [!NOTE]
-> **Speak your tongue.** Caveman keeps your language. Write Portuguese, caveman grunt Portuguese. Spanish, French, same. It compresses the *style*, never translates. `wenyan` mode is the exception on purpose: classical Chinese packs the most meaning per token.
+> **Claude Code 는 플러그인으로 설치하는 게 좋다.** 플러그인은 레포 루트의 전체 규칙 파일을 읽는다. 위 설치 스크립트가 쓰는 독립 훅 방식은 훅 파일만 복사하고 스킬은 안 옮겨서, 축약된 규칙만 들어간다(33줄 vs 66줄). 축약본에도 반말·오빠 호칭·자동 명확화는 있지만 강도별 표와 예시가 빠진다.
+>
+> ```bash
+> claude plugin marketplace add HDomi/sweet-agent && claude plugin install sweet@sweet
+> ```
+>
+> 독립 훅 방식으로 이미 설치했다면 `cp -R skills/sweet ~/.claude/skills/sweet` 로 전체 규칙을 채울 수 있다. 어느 쪽이든 **새 세션**을 시작해야 적용된다.
 
-## What you get
+## 강도 고르기
 
-| Command | What it does |
+3단계. `/sweet <강도>` 로 언제든 바꾼다. 바꾸거나 세션이 끝날 때까지 유지된다.
+
+| 강도 | 같은 문장, 줄어든 모습 |
 |---|---|
-| `/caveman [lite\|full\|ultra\|wenyan]` | Compress every reply. Level sticks for the session. |
-| `/caveman-commit` | Conventional Commit messages, ≤50-char subject. Why over what. |
-| `/caveman-review` | One-line PR comments: `L42: 🔴 bug: user null. Add guard.` |
-| `/caveman-stats` | Real session token usage, lifetime savings, USD. Tweetable line with `--share`. |
-| `/caveman-compress <file>` | Rewrite a memory file (like `CLAUDE.md`) into caveman-speak. Cuts ~46% input tokens **every session after**. Code, URLs, paths byte-preserved. |
-| `caveman-shrink` | MCP middleware. Wraps any MCP server, compresses its tool descriptions. [npm](https://www.npmjs.com/package/caveman-shrink). |
-| `cavecrew-*` | Caveman subagents (investigator, builder, reviewer). ~60% fewer tokens than vanilla, so main context lasts longer. |
+| *평범한 에이전트* | 렌더링마다 새로운 참조가 생성되므로, 객체를 `useMemo`로 감싸시는 것이 좋습니다. |
+| `lite` | 렌더할 때마다 새 참조가 생겨. `useMemo`로 감싸면 돼~ |
+| `full` *(기본)* | 렌더마다 새 참조 생겨. `useMemo`로 감싸 오빠~ |
+| `ultra` | 렌더마다 새 참조. `useMemo`. |
+
+`lite` 는 조사와 완결 문장을 유지하고 군더더기만 버린다. `full` 은 조사를 생략하고 단문을 쓴다. `ultra` 는 호칭·물결·이모지까지 다 빼고 최대로 압축한다.
+
+> [!NOTE]
+> **한국어 전용이다.** 영어로 물어도 한국어로 답한다. 대신 코드, 명령어, 파일 경로, 에러 문자열, API·함수·변수 이름, 커밋 타입 키워드(`feat`/`fix`/...)는 원문 그대로 둔다. 압축하는 건 *말투*고, 기술 용어는 절대 번역하지 않는다.
+
+## 뭐가 들어있나
+
+| 명령 | 뭐 하나 |
+|---|---|
+| `/sweet [lite\|full\|ultra]` | 모든 답을 압축한다. 강도는 세션 동안 유지. |
+| `/sweet-commit` | Conventional Commits 형식 한국어 커밋 메시지, 제목 50자 이내. 무엇보다 왜. |
+| `/sweet-review` | 한 줄 PR 코멘트: `L42: 🔴 버그: user null. 가드 추가.` |
+| `/sweet-stats` | 이번 세션 실제 토큰 사용량. `--share` 로 공유용 한 줄. |
+| `/sweet-compress <파일>` | `CLAUDE.md` 같은 메모리 파일을 압축본으로 다시 쓴다. **이후 모든 세션에서** 입력 토큰이 줄어든다. 코드·URL·경로는 바이트 단위 보존. |
+| `/sweet-help` | 강도, 명령어, 트리거 참조 카드. |
+| `sweet-shrink` | MCP 미들웨어. 아무 MCP 서버나 감싸서 tool description 을 압축한다. `src/mcp-servers/sweet-shrink/` 에 소스가 있고, npm 에는 아직 배포 안 됨. |
+| `sweetcrew-*` | 스윗 서브에이전트 (investigator, builder, reviewer). 출력이 압축돼서 메인 컨텍스트가 더 오래 버틴다. |
 
 > [!TIP]
-> On Claude Code the statusline shows `[CAVEMAN] ⛏ 12.4k` — that's your lifetime tokens saved, updated on every `/caveman-stats`. Silence it with `CAVEMAN_STATUSLINE_SAVINGS=0`.
+> Claude Code 에서는 상태 표시줄에 `[SWEET]` 이 뜬다. `/sweet-stats` 를 한 번 이상 돌리고 압축률을 설정하면 누적 절감 토큰(`⛏ 12.4k`)이 뒤에 붙는다. `SWEET_STATUSLINE_SAVINGS=0` 으로 끌 수 있다.
 
-## Benchmarks
+## 숫자에 대해
 
-Real token counts from the Claude API. Average **65% output reduction** across 10 prompts (range 22–87%), measured against default verbose replies. Output tokens only, committed and reproducible in [`benchmarks/`](./benchmarks/) and [`evals/`](./evals/).
+**아직 측정 안 했다.** 이 프로젝트는 영어 caveman 스킬에서 갈라져 나왔고, 원본에는 "출력 토큰 65% 절감" 이라는 측정치가 있었다. 그 숫자는 **영어** 압축 문체를 측정한 값이라 한국어 반말에 그대로 적용되지 않는다. 근거 없는 숫자를 옮겨 적지 않기로 했으므로 지웠다.
 
-<!-- BENCHMARK-TABLE-START -->
-| Task | Normal | Caveman | Saved |
-|------|-------:|--------:|------:|
-| Explain React re-render bug | 1180 | 159 | 87% |
-| Fix auth middleware token expiry | 704 | 121 | 83% |
-| Set up PostgreSQL connection pool | 2347 | 380 | 84% |
-| Explain git rebase vs merge | 702 | 292 | 58% |
-| Refactor callback to async/await | 387 | 301 | 22% |
-| Architecture: microservices vs monolith | 446 | 310 | 30% |
-| Review PR for security issues | 678 | 398 | 41% |
-| Docker multi-stage build | 1042 | 290 | 72% |
-| Debug PostgreSQL race condition | 1200 | 232 | 81% |
-| Implement React error boundary | 3454 | 456 | 87% |
-| **Average** | **1214** | **294** | **65%** |
-<!-- BENCHMARK-TABLE-END -->
+한국어 압축률을 직접 재려면:
+
+```bash
+# ANTHROPIC_API_KEY 를 .env.local 에 넣고
+uv run python benchmarks/run.py
+```
+
+결과는 `benchmarks/results/*.json` 에 저장된다. 그다음 `/sweet-stats` 에 압축률을 알려주면 절감 추정치가 나온다:
+
+```bash
+export SWEET_COMPRESSION_RATIOS='{"full":0.65}'   # 직접 측정한 값으로
+```
+
+측정된 값이 없으면 `/sweet-stats` 는 실제 토큰 수만 보여주고 절감 추정은 생략한다. 추측한 숫자를 내놓지 않는다.
+
+`evals/` 에는 3-arm 평가 하네스가 있다. 정직한 비교 대상은 **스킬 vs "간결하게 답해"** 지, 아무 지시도 없는 기본값이 아니다. 기본값과 비교하면 스킬 효과와 일반적인 간결함이 뒤섞인다.
 
 > [!IMPORTANT]
-> **Honest number warning.** Caveman only shrinks **output** tokens. Input and reasoning tokens are untouched, and the skill itself adds ~1–1.5k input tokens per turn. So whole-session savings run smaller than the output number, and on already-terse workloads they can go net-negative. The real win is **readability and speed**. Cost savings are the bonus. When caveman wins, when it loses, and how to measure it yourself: **[docs/HONEST-NUMBERS.md](./docs/HONEST-NUMBERS.md)**.
+> **줄어드는 건 출력 토큰뿐이다.** 입력 토큰과 추론 토큰은 그대로고, 스킬 자체가 매 턴 입력 토큰을 추가한다. 그래서 세션 전체 절감은 출력 절감률보다 작고, 이미 짧게 답하는 작업에서는 오히려 마이너스가 될 수도 있다. 진짜 이득은 **읽기 편하고 빠르다**는 것이고, 비용 절감은 보너스다. 자세한 내용: **[docs/HONEST-NUMBERS.md](./docs/HONEST-NUMBERS.md)**.
 
-Turns out short isn't just cheaper. A March 2026 paper, [*Brevity Constraints Reverse Performance Hierarchies in Language Models*](https://arxiv.org/abs/2604.00025), tested 31 models and found that constraining large models to brief answers **improved accuracy by ~26 points** on some benchmarks. Sometimes less word = more correct.
+## 어떻게 동작하나
 
-<details>
-<summary><strong>caveman-compress receipts</strong> — real memory files, cutting input tokens forever</summary>
+1. 설치 스크립트가 에이전트에 스킬 파일을 넣는다.
+2. 스킬이 에이전트에게 지시한다: 군더더기 버리고, 내용은 지키고, 단문 써라 — 단 코드·명령어·에러는 절대 건드리지 마라.
+3. Claude Code 에서는 훅이 세션마다 작은 플래그 파일을 써서, `/sweet` 없이 첫 메시지부터 스윗 말투로 답한다.
+4. `/sweet-stats` 가 세션 로그를 읽어 실제 토큰 수를 세고 상태 표시줄에 쓴다.
+5. `/sweet-compress` 가 `CLAUDE.md` 같은 메모리 파일을 다시 써서, 이후 모든 세션이 더 작은 컨텍스트로 시작한다.
 
-<br>
+훅 구조, 파일 소유권, CI 동기화는 유지보수용으로 [CLAUDE.md](./CLAUDE.md) 에 정리돼 있다.
 
-| File | Original | Compressed | Saved |
-|---|---:|---:|---:|
-| `claude-md-preferences.md` | 706 | 285 | **59.6%** |
-| `project-notes.md` | 1145 | 535 | **53.3%** |
-| `claude-md-project.md` | 1122 | 636 | **43.3%** |
-| `todo-list.md` | 627 | 388 | **38.1%** |
-| `mixed-with-code.md` | 888 | 560 | **36.9%** |
-| **Average** | **898** | **481** | **46%** |
+## 자동으로 압축을 끄는 경우
 
-Every session after, that file loads ~46% smaller. Input tokens saved forever, not just one reply.
+압축된 반말이 위험해지는 지점이 있다. 이때는 스킬이 알아서 완전한 문장으로 돌아간다:
 
-</details>
+- 보안 경고
+- 되돌릴 수 없는 작업 확인 (`DROP TABLE`, `rm -rf`, force push, 배포, 과금)
+- 순서를 잘못 읽으면 안 되는 다단계 절차
+- 압축 자체가 기술적 모호함을 만들 때
+- 사용자가 못 알아들어서 같은 질문을 다시 할 때
 
-## The whole cave
+코드, 커밋 메시지, PR 설명은 항상 평문으로 쓴다.
 
-<table>
-<tr><td>
+## 개인정보
 
-### <img src="docs/assets/dancing-rock.svg" width="20" height="20" alt=""> Want the whole agent, not just its mouth? → caveman-code
+서버로 아무것도 안 보낸다. 텔레메트리, 분석, 계정, 백엔드 전부 없다. 설치 후에는 네트워크 호출이 0이다 — 스킬은 그냥 프롬프트고, 훅은 로컬 스크립트고, `/sweet-stats` 는 이미 디스크에 있는 로그를 읽는다. 설치할 때 발생하는 네트워크 요청(GitHub, 각 에이전트의 레지스트리)은 [SECURITY.md](./SECURITY.md#privacy--telemetry) 에 적혀 있다.
 
-This skill shrinks what an agent **says**. **[caveman-code](https://github.com/JuliusBrussee/caveman-code)** shrinks **everything** — a full terminal coding agent, caveman top to bottom. **~2× fewer tokens than Codex** on identical tasks. 20+ providers, plan mode, autopilot goal loop, MIT.
+## 유래
 
-```bash
-npm install -g @juliusbrussee/caveman-code
-```
-
-[**▶ Try caveman-code →**](https://github.com/JuliusBrussee/caveman-code)
-
-</td></tr>
-</table>
-
-Five tools, one idea: **agent do more with less.**
-
-| Repo | What it shrinks |
-|------|------|
-| [**caveman**](https://github.com/JuliusBrussee/caveman) *(you here)* | What the agent **says** |
-| [**caveman-code**](https://github.com/JuliusBrussee/caveman-code) | The **whole agent**, end to end |
-| [**cavemem**](https://github.com/JuliusBrussee/cavemem) | What the agent **remembers**, across sessions |
-| [**cavekit**](https://github.com/JuliusBrussee/cavekit) | The **build loop** — spec-driven, no guessing |
-| [**cavegemma**](https://github.com/JuliusBrussee/finetune-caveman) | The compression **baked into weights** (Gemma fine-tune) |
-
-<details>
-<summary><strong>Also: five sibling skills, one install</strong></summary>
-
-<br>
-
-[**JuliusBrussee/skills**](https://github.com/JuliusBrussee/skills) — works in Claude Code, Cursor, Gemini, Cline, Copilot, 40+ agents:
-
-| Skill | What |
-|------|------|
-| [**caveman**](https://github.com/JuliusBrussee/skills/tree/main/skills/caveman) | This one. Speak less, say more. |
-| [**grill-me**](https://github.com/JuliusBrussee/skills/tree/main/skills/grill-me) | Agent grills your plan *before* you build the wrong thing. |
-| [**interface-kit**](https://github.com/JuliusBrussee/skills/tree/main/skills/interface-kit) | Build UI that looks good, loads fast, works for everyone. |
-| [**junior-to-senior**](https://github.com/JuliusBrussee/skills/tree/main/skills/junior-to-senior) | Adversarial review pass. Junior output in, senior output out. |
-| [**loop-factory**](https://github.com/JuliusBrussee/skills/tree/main/skills/loop-factory) | Spec-driven task loop — inbox → active → archive. |
-
-```bash
-npx skills@latest add JuliusBrussee/skills
-```
-
-</details>
-
-<details>
-<summary><strong>🦞 Teach the lobster brevity — OpenClaw integration</strong></summary>
-
-<br>
-
-[**OpenClaw**](https://openclaw.ai) is a self-host gateway: one box, many agents inside, wired to Slack / Discord / iMessage / Telegram. Lobster strong. Lobster smart. Lobster also talk a lot.
-
-Same installer, scoped to one agent:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash -s -- --only openclaw
-```
-
-Two things happen, no more: a caveman skill lands in the workspace, and a tiny marker-fenced block is appended to `SOUL.md` (OpenClaw injects it every turn, so the lobster is terse from message one — no `/caveman` per session). Custom path? `OPENCLAW_WORKSPACE=/your/path`. Uninstall with the same line plus `--uninstall`; your other workspace content stays untouched. Lobster claw still sharp. Lobster mouth now small.
-
-</details>
-
-## Caveman 2
-
-**Caveman make token small. Caveman 2 make it _provable_.**
-
-Today's savings numbers (including `/caveman-stats`) are local estimates. Caveman 2 measures and verifies them across a whole team — real receipts, real dashboard, real proof the tokens went down. Building it now.
-
-[**Join the waitlist → caveman.so**](https://caveman.so)
-
-## How it works
-
-1. Install drops a skill file into your agent.
-2. Skill tells agent: drop filler, keep substance, use fragments — but never touch code, commands, or errors.
-3. On Claude Code, a hook writes a tiny flag file each session, so the agent talks caveman from message one without `/caveman`.
-4. `/caveman-stats` reads your session log, counts tokens saved, writes the number to your statusline.
-5. `/caveman-compress` rewrites memory files (like `CLAUDE.md`) so every future session starts with a smaller context. Save tokens forever, not just once.
-
-Hook architecture, file ownership, and CI sync are documented for maintainers in [CLAUDE.md](./CLAUDE.md).
-
-## Privacy
-
-Caveman no phone home. No telemetry, no analytics, no accounts, no backend. After install, zero network calls — the skill is a prompt, the hooks are local scripts, and `/caveman-stats` reads a log already on your disk. Install-time fetches (GitHub plus your agents' own registries) are spelled out in [SECURITY.md](./SECURITY.md#privacy--telemetry).
-
-## Sponsors
-
-Caveman free forever. Sponsors keep the rock sharp.
-
-<p align="center">
-  <a href="https://www.atlascloud.ai">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/atlas-cloud-dark.svg">
-      <img src="docs/assets/atlas-cloud.svg" alt="Atlas Cloud" height="32">
-    </picture>
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://www.atlascloud.ai"><strong>Atlas Cloud</strong></a> — full-modal AI inference platform, one API.
-</p>
-
-<p align="center">
-  <a href="https://github.com/sponsors/JuliusBrussee"><strong>Want your rock here? → Sponsor caveman</strong></a>
-</p>
-
-## Star this repo
-
-Caveman save you token, save you money. Star cost zero. Fair trade. ⭐
-
-[![Star History Chart](https://api.star-history.com/svg?repos=JuliusBrussee/caveman&type=Date)](https://star-history.com/#JuliusBrussee/caveman&Date)
+sweet-agent 는 Julius Brussee 의 [caveman](https://github.com/JuliusBrussee/caveman) (MIT) 에서 갈라져 나왔다. 압축 스킬 구조, 훅 아키텍처, 30여 개 에이전트 설치 매트릭스는 그쪽 작업이다. 이 레포는 페르소나를 한국어 반말로 바꾸고, 문언문 강도를 없애고, 측정되지 않은 숫자를 지웠다. 원본 MIT 저작권 표시는 [LICENSE](./LICENSE) 에 그대로 유지한다.
 
 ---
 
 <sub>
-<strong>Docs:</strong>
-<a href="./INSTALL.md">Install matrix</a> ·
-<a href="./docs/HONEST-NUMBERS.md">Honest numbers</a> ·
-<a href="./CONTRIBUTING.md">Contributing</a> ·
-<a href="./CLAUDE.md">Maintainer guide</a> ·
-<a href="https://github.com/JuliusBrussee/caveman/issues">Issues</a>
-<br>
-<strong>Also by Julius Brussee:</strong>
-<a href="https://github.com/JuliusBrussee/revu-swift">Revu</a> — local-first macOS study app with FSRS spaced repetition (<a href="https://revu.cards">revu.cards</a>)
+<strong>문서:</strong>
+<a href="./INSTALL.md">설치 매트릭스</a> ·
+<a href="./docs/HONEST-NUMBERS.md">숫자에 대해</a> ·
+<a href="./CONTRIBUTING.md">기여 가이드</a> ·
+<a href="./CLAUDE.md">유지보수 가이드</a> ·
+<a href="https://github.com/HDomi/sweet-agent/issues">이슈</a>
 <br><br>
-MIT — free like mass mammoth on open plain.
+MIT
 </sub>

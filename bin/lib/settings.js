@@ -1,7 +1,7 @@
-// caveman — JSONC-tolerant settings.json read/write + defensive hook validation.
+// sweet — JSONC-tolerant settings.json read/write + defensive hook validation.
 //
 // Lifted in spirit from gsd-build/get-shit-done's stripJsonComments + readSettings.
-// Reused by bin/install.js and (optionally) by hooks/caveman-activate.js so a
+// Reused by bin/install.js and (optionally) by hooks/sweet-activate.js so a
 // commented settings.json no longer crashes the installer or the runtime hooks.
 //
 // Public API:
@@ -9,9 +9,9 @@
 //   writeSettings(path, obj)       → atomic write with newline
 //   stripJsonComments(src)         → string with // and /* */ stripped (string-aware)
 //   validateHookFields(settings)   → mutates: drops malformed hook entries
-//   hasCavemanHook(settings, ev)   → idempotency probe
+//   hasSweetHook(settings, ev)   → idempotency probe
 //   addCommandHook(settings, ev, opts) → no-op if substring marker already present
-//   removeCavemanHooks(settings)   → uninstall helper
+//   removeSweetHooks(settings)   → uninstall helper
 //
 // Pure stdlib, CommonJS, Node ≥14.
 
@@ -100,14 +100,14 @@ function readSettings(p) {
   let raw;
   try { raw = fs.readFileSync(p, 'utf8'); }
   catch (e) {
-    process.stderr.write(`caveman: cannot read ${p}: ${e.message}\n`);
+    process.stderr.write(`sweet: cannot read ${p}: ${e.message}\n`);
     return null;
   }
   if (!raw.trim()) return {};
   try { return JSON.parse(raw); } catch (_) { /* fall through to JSONC */ }
   try { return JSON.parse(stripJsonComments(raw)); }
   catch (e) {
-    process.stderr.write(`caveman: warning — ${p} is not valid JSON or JSONC: ${e.message}\n`);
+    process.stderr.write(`sweet: warning — ${p} is not valid JSON or JSONC: ${e.message}\n`);
     return null;
   }
 }
@@ -153,7 +153,7 @@ function validateHookFields(settings) {
 }
 
 // ── Idempotency probe ──────────────────────────────────────────────────────
-function hasCavemanHook(settings, event, marker = 'caveman') {
+function hasSweetHook(settings, event, marker = 'sweet') {
   const arr = settings && settings.hooks && settings.hooks[event];
   if (!Array.isArray(arr)) return false;
   return arr.some(e =>
@@ -170,7 +170,7 @@ function addCommandHook(settings, event, opts) {
   if (!settings.hooks) settings.hooks = {};
   if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
   const marker = opts.marker || opts.command;
-  if (hasCavemanHook(settings, event, marker)) return false;
+  if (hasSweetHook(settings, event, marker)) return false;
   const hook = { type: 'command', command: opts.command };
   if (typeof opts.timeout === 'number') hook.timeout = opts.timeout;
   if (typeof opts.statusMessage === 'string') hook.statusMessage = opts.statusMessage;
@@ -181,14 +181,14 @@ function addCommandHook(settings, event, opts) {
 // ── Managed hook scripts ──────────────────────────────────────────────────
 // The exact script basenames this installer wires into settings.json. Every
 // helper that decides "is this hook ours?" must match against these — never
-// against a bare "caveman" substring, which also matches user-authored hooks
+// against a bare "sweet" substring, which also matches user-authored hooks
 // that merely mention the word in a path (issue #593).
 const MANAGED_HOOK_BASENAMES = new Set([
-  'caveman-activate.js',
-  'caveman-mode-tracker.js',
-  'caveman-stats.js',
-  'caveman-statusline.sh',
-  'caveman-statusline.ps1',
+  'sweet-activate.js',
+  'sweet-mode-tracker.js',
+  'sweet-stats.js',
+  'sweet-statusline.sh',
+  'sweet-statusline.ps1',
 ]);
 
 // Split a command into shell-ish tokens, honoring single/double quotes so a
@@ -204,8 +204,8 @@ function tokenizeCommand(command) {
 }
 
 // True iff some token's BASENAME exactly equals a managed script name. Exact
-// match — not substring — so `mycaveman-activate.js` or a user hook living
-// under a `caveman-notes/` directory is never treated as ours. win32.basename
+// match — not substring — so `mysweet-activate.js` or a user hook living
+// under a `sweet-notes/` directory is never treated as ours. win32.basename
 // splits on both / and \ so a settings.json written on Windows still matches
 // when processed elsewhere.
 function referencesManagedScript(command) {
@@ -217,13 +217,13 @@ function referencesManagedScript(command) {
   return false;
 }
 
-// ── removeCavemanHooks ────────────────────────────────────────────────────
+// ── removeSweetHooks ────────────────────────────────────────────────────
 // Strip every entry whose any hook command targets one of our managed hook
 // scripts (exact basename match, see above). Empties events. Tolerates
 // malformed pre-existing settings (non-array hook lists, foreign shapes) —
 // those get dropped by validateHookFields first so we never call .length /
 // .filter on a non-array.
-function removeCavemanHooks(settings) {
+function removeSweetHooks(settings) {
   if (!settings || !settings.hooks) return 0;
   validateHookFields(settings);
   if (!settings.hooks) return 0; // validate may have deleted the whole tree
@@ -247,7 +247,7 @@ function removeCavemanHooks(settings) {
 // absolute node path) and the basename is one of ours, rewrite to use
 // `absoluteNode` so GUI launchers with minimal PATH still find Node. Only
 // touches commands matching the exact bare-node shape — won't false-positive
-// on user-authored hooks that just happen to mention "caveman".
+// on user-authored hooks that just happen to mention "sweet".
 function rewriteLegacyManagedHookCommands(settings, absoluteNode) {
   if (!settings || !settings.hooks || !absoluteNode) return 0;
   let rewritten = 0;
@@ -274,13 +274,13 @@ function rewriteLegacyManagedHookCommands(settings, absoluteNode) {
 // Remove managed hook entries whose target script no longer exists on disk.
 //
 // Migrating an old manual install (settings.json hooks → ~/.claude/hooks/
-// caveman-*.js) to the Claude Code plugin disables/renames those local
+// sweet-*.js) to the Claude Code plugin disables/renames those local
 // scripts but leaves the settings.json entries pointing at the now-missing
 // file. Claude Code then runs `node <missing>` every SessionStart /
 // UserPromptSubmit and crashes with `node:…/loader:1478 — Cannot find module
-// …caveman-activate.js` (issue #471). rewriteLegacyManagedHookCommands can't
+// …sweet-activate.js` (issue #471). rewriteLegacyManagedHookCommands can't
 // help — it only matches the bare-node shape and these orphans are usually
-// absolute-node — and removeCavemanHooks runs only on uninstall.
+// absolute-node — and removeSweetHooks runs only on uninstall.
 //
 // We extract the script path from any managed-looking command (bare- or
 // absolute-node, quoted or not), resolve it relative to dir if not absolute,
@@ -294,7 +294,7 @@ function pruneOrphanedManagedHooks(settings, configDir) {
 
   // A command is a missing managed target iff some token's BASENAME exactly
   // equals a managed script (exact match — not substring — so a user hook like
-  // `mycaveman-activate.js` is never touched) and that resolved path is absent.
+  // `mysweet-activate.js` is never touched) and that resolved path is absent.
   // Relative paths resolve against configDir; honors CLAUDE_CONFIG_DIR. Wrapped
   // so a malformed command or fs error never throws out of the prune pass.
   const targetMissing = (command) => {
@@ -351,9 +351,9 @@ module.exports = {
   readSettings,
   writeSettings,
   validateHookFields,
-  hasCavemanHook,
+  hasSweetHook,
   addCommandHook,
-  removeCavemanHooks,
+  removeSweetHooks,
   rewriteLegacyManagedHookCommands,
   pruneOrphanedManagedHooks,
   claudeConfigDir,

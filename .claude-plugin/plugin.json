@@ -1,9 +1,9 @@
 {
-  "name": "caveman",
-  "description": "Ultra-compressed communication mode. Cuts 65% of output tokens (measured) while keeping full technical accuracy by speaking like a caveman.",
+  "name": "sweet",
+  "description": "한국어 전용 초압축 응답 모드. 20대 여성의 다정한 반말로 짧게 답하면서 기술 정확도는 그대로 지킨다.",
   "author": {
-    "name": "Julius Brussee",
-    "url": "https://github.com/JuliusBrussee"
+    "name": "HDomi",
+    "url": "https://github.com/HDomi"
   },
   "hooks": {
     "SessionStart": [
@@ -11,9 +11,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/caveman-activate.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/sweet-activate.js\"",
             "timeout": 5,
-            "statusMessage": "Loading caveman mode..."
+            "statusMessage": "Loading sweet mode..."
           }
         ]
       }
@@ -23,9 +23,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/caveman-mode-tracker.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/sweet-mode-tracker.js\"",
             "timeout": 5,
-            "statusMessage": "Tracking caveman mode..."
+            "statusMessage": "Tracking sweet mode..."
           }
         ]
       }

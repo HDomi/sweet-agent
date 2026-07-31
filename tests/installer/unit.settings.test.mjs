@@ -120,74 +120,74 @@ test('validateHookFields drops empty events and empty hooks parent', () => {
 
 test('addCommandHook is idempotent on substring marker', () => {
   const s = {};
-  const a = SETTINGS.addCommandHook(s, 'SessionStart', { command: '/abs/path/caveman-activate.js', marker: 'caveman-activate' });
-  const b = SETTINGS.addCommandHook(s, 'SessionStart', { command: '/different/abs/path/caveman-activate.js', marker: 'caveman-activate' });
+  const a = SETTINGS.addCommandHook(s, 'SessionStart', { command: '/abs/path/sweet-activate.js', marker: 'sweet-activate' });
+  const b = SETTINGS.addCommandHook(s, 'SessionStart', { command: '/different/abs/path/sweet-activate.js', marker: 'sweet-activate' });
   assert.equal(a, true);
   assert.equal(b, false);
   assert.equal(s.hooks.SessionStart.length, 1);
 });
 
-test('hasCavemanHook detects via substring', () => {
-  const s = { hooks: { SessionStart: [{ hooks: [{ type: 'command', command: 'node /x/caveman-activate.js' }] }] } };
-  assert.equal(SETTINGS.hasCavemanHook(s, 'SessionStart', 'caveman-activate'), true);
-  assert.equal(SETTINGS.hasCavemanHook(s, 'SessionStart', 'gsd'), false);
-  assert.equal(SETTINGS.hasCavemanHook(s, 'UserPromptSubmit'), false);
+test('hasSweetHook detects via substring', () => {
+  const s = { hooks: { SessionStart: [{ hooks: [{ type: 'command', command: 'node /x/sweet-activate.js' }] }] } };
+  assert.equal(SETTINGS.hasSweetHook(s, 'SessionStart', 'sweet-activate'), true);
+  assert.equal(SETTINGS.hasSweetHook(s, 'SessionStart', 'gsd'), false);
+  assert.equal(SETTINGS.hasSweetHook(s, 'UserPromptSubmit'), false);
 });
 
-test('removeCavemanHooks tolerates malformed hook event values without throwing', () => {
+test('removeSweetHooks tolerates malformed hook event values without throwing', () => {
   // Pre-fix bug: settings.hooks.SessionStart = "oops" (string, not array)
   // would crash on .filter(...) inside the filter loop. Fix delegates to
   // validateHookFields first + adds Array.isArray guard.
   const s = { hooks: { SessionStart: "oops", UserPromptSubmit: { not: 'an array either' } } };
   let removed;
-  assert.doesNotThrow(() => { removed = SETTINGS.removeCavemanHooks(s); });
+  assert.doesNotThrow(() => { removed = SETTINGS.removeSweetHooks(s); });
   assert.equal(removed, 0);
   assert.equal(s.hooks, undefined);
 });
 
-test('removeCavemanHooks strips managed scripts and cleans empties', () => {
+test('removeSweetHooks strips managed scripts and cleans empties', () => {
   const s = {
     hooks: {
       SessionStart: [
-        { hooks: [{ type: 'command', command: 'node /x/hooks/caveman-activate.js' }] },
+        { hooks: [{ type: 'command', command: 'node /x/hooks/sweet-activate.js' }] },
         { hooks: [{ type: 'command', command: 'other' }] },
       ],
-      UserPromptSubmit: [{ hooks: [{ type: 'command', command: '"/usr/bin/node" "/x/hooks/caveman-mode-tracker.js"' }] }],
+      UserPromptSubmit: [{ hooks: [{ type: 'command', command: '"/usr/bin/node" "/x/hooks/sweet-mode-tracker.js"' }] }],
     },
   };
-  const removed = SETTINGS.removeCavemanHooks(s);
+  const removed = SETTINGS.removeSweetHooks(s);
   assert.equal(removed, 2);
   assert.equal(s.hooks.SessionStart.length, 1);
   assert.equal(s.hooks.UserPromptSubmit, undefined);
 });
 
-test('removeCavemanHooks leaves user hooks that merely mention caveman (issue #593)', () => {
+test('removeSweetHooks leaves user hooks that merely mention sweet (issue #593)', () => {
   const s = {
     hooks: {
       PreToolUse: [
-        // Path contains the word "caveman" but targets a user-authored script.
-        { hooks: [{ type: 'command', command: 'node /Users/me/Projects/caveman-notes/my-hook.js' }] },
+        // Path contains the word "sweet" but targets a user-authored script.
+        { hooks: [{ type: 'command', command: 'node /Users/me/Projects/sweet-notes/my-hook.js' }] },
         // Basename is a superstring of a managed name — still not ours.
-        { hooks: [{ type: 'command', command: 'node /x/mycaveman-activate.js' }] },
+        { hooks: [{ type: 'command', command: 'node /x/mysweet-activate.js' }] },
       ],
       SessionStart: [
-        { hooks: [{ type: 'command', command: '"/usr/bin/node" "/x/hooks/caveman-activate.js"' }] },
+        { hooks: [{ type: 'command', command: '"/usr/bin/node" "/x/hooks/sweet-activate.js"' }] },
       ],
     },
   };
-  const removed = SETTINGS.removeCavemanHooks(s);
+  const removed = SETTINGS.removeSweetHooks(s);
   assert.equal(removed, 1, 'only the managed SessionStart hook should be removed');
-  assert.equal(s.hooks.PreToolUse.length, 2, 'user hooks mentioning caveman must survive uninstall');
+  assert.equal(s.hooks.PreToolUse.length, 2, 'user hooks mentioning sweet must survive uninstall');
   assert.equal(s.hooks.SessionStart, undefined);
 });
 
-test('removeCavemanHooks removes the Windows statusline-stats wiring (caveman-stats.js / .ps1)', () => {
+test('removeSweetHooks removes the Windows statusline-stats wiring (sweet-stats.js / .ps1)', () => {
   const s = {
     hooks: {
-      Stop: [{ hooks: [{ type: 'command', command: '"C:\\Program Files\\nodejs\\node.exe" "C:\\Users\\me\\.claude\\hooks\\caveman-stats.js"' }] }],
+      Stop: [{ hooks: [{ type: 'command', command: '"C:\\Program Files\\nodejs\\node.exe" "C:\\Users\\me\\.claude\\hooks\\sweet-stats.js"' }] }],
     },
   };
-  const removed = SETTINGS.removeCavemanHooks(s);
+  const removed = SETTINGS.removeSweetHooks(s);
   assert.equal(removed, 1);
   assert.equal(s.hooks, undefined);
 });
@@ -196,14 +196,14 @@ test('rewriteLegacyManagedHookCommands rewrites bare-node managed scripts', () =
   const s = {
     hooks: {
       SessionStart: [{ hooks: [
-        { type: 'command', command: 'node /abs/hooks/caveman-activate.js' },
+        { type: 'command', command: 'node /abs/hooks/sweet-activate.js' },
         { type: 'command', command: 'node /abs/hooks/some-user-hook.js' },
       ] }],
     },
   };
   const n = SETTINGS.rewriteLegacyManagedHookCommands(s, '/usr/local/bin/node');
   assert.equal(n, 1);
-  assert.match(s.hooks.SessionStart[0].hooks[0].command, /"\/usr\/local\/bin\/node" "\/abs\/hooks\/caveman-activate\.js"/);
+  assert.match(s.hooks.SessionStart[0].hooks[0].command, /"\/usr\/local\/bin\/node" "\/abs\/hooks\/sweet-activate\.js"/);
   assert.equal(s.hooks.SessionStart[0].hooks[1].command, 'node /abs/hooks/some-user-hook.js');
 });
 
@@ -211,7 +211,7 @@ test('rewriteLegacyManagedHookCommands ignores already-absolute node commands', 
   const s = {
     hooks: {
       SessionStart: [{ hooks: [
-        { type: 'command', command: '"/usr/local/bin/node" "/abs/hooks/caveman-activate.js"' },
+        { type: 'command', command: '"/usr/local/bin/node" "/abs/hooks/sweet-activate.js"' },
       ] }],
     },
   };
@@ -223,7 +223,7 @@ test('pruneOrphanedManagedHooks removes managed hook whose target is missing (ab
   const s = {
     hooks: {
       SessionStart: [{ hooks: [
-        { type: 'command', command: '"/opt/node/bin/node" "/no/such/dir/caveman-activate.js"' },
+        { type: 'command', command: '"/opt/node/bin/node" "/no/such/dir/sweet-activate.js"' },
       ] }],
     },
   };
@@ -236,7 +236,7 @@ test('pruneOrphanedManagedHooks removes orphan bare-node managed hook', () => {
   const s = {
     hooks: {
       UserPromptSubmit: [{ hooks: [
-        { type: 'command', command: 'node /no/such/dir/caveman-mode-tracker.js' },
+        { type: 'command', command: 'node /no/such/dir/sweet-mode-tracker.js' },
       ] }],
     },
   };
@@ -247,7 +247,7 @@ test('pruneOrphanedManagedHooks removes orphan bare-node managed hook', () => {
 
 test('pruneOrphanedManagedHooks keeps managed hook whose target exists', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cm-prune-'));
-  const script = path.join(dir, 'caveman-activate.js');
+  const script = path.join(dir, 'sweet-activate.js');
   fs.writeFileSync(script, '// real');
   const s = {
     hooks: {
@@ -277,11 +277,11 @@ test('pruneOrphanedManagedHooks leaves non-managed hooks alone even if missing',
 
 test('pruneOrphanedManagedHooks resolves relative target against configDir', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cm-prune-rel-'));
-  // hooks/caveman-activate.js intentionally NOT created → missing
+  // hooks/sweet-activate.js intentionally NOT created → missing
   const s = {
     hooks: {
       SessionStart: [{ hooks: [
-        { type: 'command', command: 'node hooks/caveman-activate.js' },
+        { type: 'command', command: 'node hooks/sweet-activate.js' },
       ] }],
     },
   };
@@ -294,8 +294,8 @@ test('pruneOrphanedManagedHooks does NOT match a user script whose name merely c
   const s = {
     hooks: {
       SessionStart: [{ hooks: [
-        // basename is "mycaveman-activate.js" — not an exact managed basename
-        { type: 'command', command: 'node /no/such/dir/mycaveman-activate.js' },
+        // basename is "mysweet-activate.js" — not an exact managed basename
+        { type: 'command', command: 'node /no/such/dir/mysweet-activate.js' },
       ] }],
     },
   };
@@ -308,7 +308,7 @@ test('pruneOrphanedManagedHooks handles quoted paths containing spaces', () => {
   const s = {
     hooks: {
       SessionStart: [{ hooks: [
-        { type: 'command', command: '"/opt/node/bin/node" "/no such dir/caveman-activate.js"' },
+        { type: 'command', command: '"/opt/node/bin/node" "/no such dir/sweet-activate.js"' },
       ] }],
     },
   };
@@ -319,7 +319,7 @@ test('pruneOrphanedManagedHooks handles quoted paths containing spaces', () => {
 
 test('pruneOrphanedManagedHooks drops orphaned managed statusLine', () => {
   const s = {
-    statusLine: { type: 'command', command: 'bash /no/such/dir/caveman-statusline.sh' },
+    statusLine: { type: 'command', command: 'bash /no/such/dir/sweet-statusline.sh' },
   };
   const removed = SETTINGS.pruneOrphanedManagedHooks(s, '/tmp/__cm_cfg_missing');
   assert.equal(removed, 1);

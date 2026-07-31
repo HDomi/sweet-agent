@@ -2,13 +2,19 @@ benchmarks/results/*.json
 __pycache__/
 *.pyc
 .venv/
+.env
 .env.local
 **/.DS_Store
 .claude/worktrees/
 evals/snapshots/*.html
 evals/snapshots/*.png
-context/refs/research-brief-caveman-code-efficiency.md
+node_modules/
+npm-debug.log*
 
-# Build artifacts
+# Local reference copy of the upstream project (caveman). Not part of this repo.
+caveman-main/
+
+# Build artifacts. dist/ is generated, EXCEPT sweet.skill — the release
+# artifact is committed on purpose and CI rebuilds it on every skill change.
 dist/*
-!dist/caveman.skill
+!dist/sweet.skill

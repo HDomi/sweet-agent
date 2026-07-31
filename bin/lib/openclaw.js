@@ -1,4 +1,4 @@
-// caveman → OpenClaw install / uninstall helper.
+// sweet → OpenClaw install / uninstall helper.
 //
 // OpenClaw is a self-hosted gateway that orchestrates Claude Code, Codex,
 // Pi, OpenCode, and others. It has its own workspace + skills system at
@@ -8,8 +8,8 @@
 // ARE injected each turn under "Project Context", subject to a 12K-per-file
 // and 60K-total cap.
 //
-// To make caveman always-on through OpenClaw, we do two writes:
-//   1. Drop a copy of skills/caveman/SKILL.md into <workspace>/skills/caveman/
+// To make sweet always-on through OpenClaw, we do two writes:
+//   1. Drop a copy of skills/sweet/SKILL.md into <workspace>/skills/sweet/
 //      with OpenClaw-required frontmatter (`version`, `always: true`) merged
 //      in. Makes the skill discoverable via `openclaw skills list` and lets
 //      the orchestrated agent `read` it on demand.
@@ -26,10 +26,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const SKILL_NAME = 'caveman';
+const SKILL_NAME = 'sweet';
 const SKILL_VERSION = '1.0.0';
-const MARK_BEGIN = '<!-- caveman-begin -->';
-const MARK_END = '<!-- caveman-end -->';
+const MARK_BEGIN = '<!-- sweet-begin -->';
+const MARK_END = '<!-- sweet-end -->';
 const SOUL_FILE = 'SOUL.md';
 
 function resolveWorkspace(env = process.env) {
@@ -44,7 +44,7 @@ function readIfExists(p) {
 // ── Frontmatter helpers ───────────────────────────────────────────────────
 // Lightweight YAML merge — we only need to insert `version` and `always` if
 // they're absent. Avoids pulling in a YAML dep for a job this small. The
-// caveman SKILL.md uses block-scalar `description: >`, which a naive split
+// sweet SKILL.md uses block-scalar `description: >`, which a naive split
 // would mangle — but since we're only ever appending top-level keys (never
 // editing existing ones), a string-prepend after the leading `---\n` is safe.
 
@@ -81,30 +81,33 @@ function mergeOpenclawFrontmatter(src) {
 // ── Bootstrap snippet load ────────────────────────────────────────────────
 function loadBootstrapSnippet(repoRoot) {
   if (repoRoot) {
-    const p = path.join(repoRoot, 'src', 'rules', 'caveman-openclaw-bootstrap.md');
+    const p = path.join(repoRoot, 'src', 'rules', 'sweet-openclaw-bootstrap.md');
     const body = readIfExists(p);
     if (body) return body.endsWith('\n') ? body : body + '\n';
   }
   // Standalone fallback (curl|node case where there's no repo on disk).
-  // Keep this in sync with src/rules/caveman-openclaw-bootstrap.md.
+  // Keep this in sync with src/rules/sweet-openclaw-bootstrap.md.
   return [
     MARK_BEGIN,
-    '## Caveman mode (always on)',
+    '## 스윗 모드 (상시 켜짐)',
     '',
-    'Respond terse like smart caveman. All technical substance stay. Only fluff die.',
+    '오빠에게 짧고 다정한 반말로 답한다. 기술 내용은 하나도 안 뺀다. 군더더기만 버린다.',
     '',
-    "The full ruleset and intensity levels live in this workspace's caveman skill:",
+    '산문은 100% 한국어. 존댓말 어미 금지. 호칭 "오빠"는 응답당 0~1번.',
+    '코드·명령어·파일 경로·에러 문자열·API 이름은 원문 그대로.',
     '',
-    '  skills/caveman/SKILL.md',
+    '전체 규칙과 강도 단계는 이 워크스페이스의 스윗 스킬에 있다:',
     '',
-    'Default intensity: `full`. Switch with `/caveman lite|full|ultra|wenyan`.',
-    'Stop with: "stop caveman" / "normal mode" / "deactivate caveman".',
+    '  skills/sweet/SKILL.md',
     '',
-    'Auto-Clarity: drop caveman for security warnings, irreversible action',
-    'confirmations, multi-step sequences where fragments risk misread, or when',
-    'user is confused or repeating. Resume after.',
+    '기본 강도: `full`. 바꾸기: `/sweet lite|full|ultra`.',
+    '끄기: "스윗 끄기" / "normal mode" / "그만".',
     '',
-    'Boundaries: code, commit messages, and PR descriptions stay normal prose.',
+    '자동 명확화: 보안 경고, 되돌릴 수 없는 작업 확인, 순서를 잘못 읽을 위험이',
+    '있는 다단계 절차, 오빠가 못 알아듣거나 같은 질문을 다시 할 때는 압축과 애교를',
+    '끄고 완전한 문장으로 쓴다. 끝나면 복귀.',
+    '',
+    '경계: 코드, 커밋 메시지, PR 설명은 평문으로 쓴다.',
     MARK_END,
     '',
   ].join('\n');
@@ -112,7 +115,7 @@ function loadBootstrapSnippet(repoRoot) {
 
 function loadSkillBody(repoRoot) {
   if (!repoRoot) return null;
-  return readIfExists(path.join(repoRoot, 'skills', 'caveman', 'SKILL.md'));
+  return readIfExists(path.join(repoRoot, 'skills', 'sweet', 'SKILL.md'));
 }
 
 // ── SOUL.md marker-block append/strip ─────────────────────────────────────
@@ -202,8 +205,8 @@ function installOpenclaw({ workspace, repoRoot, dryRun = false, force = false, l
   const ws = workspace || resolveWorkspace();
   const skillBody = loadSkillBody(repoRoot);
   if (!skillBody) {
-    log.warn('  openclaw install requires the caveman repo on disk (skills/caveman/SKILL.md missing).');
-    log.note('  Re-run from a clone or via `npx -y github:JuliusBrussee/caveman -- --only openclaw`.');
+    log.warn('  openclaw install requires the sweet repo on disk (skills/sweet/SKILL.md missing).');
+    log.note('  Re-run from a clone or via `npx -y github:HDomi/sweet-agent -- --only openclaw`.');
     return { ok: false, reason: 'repo not available' };
   }
   const snippet = loadBootstrapSnippet(repoRoot);
@@ -223,7 +226,7 @@ function installOpenclaw({ workspace, repoRoot, dryRun = false, force = false, l
 
   if (dryRun) {
     log.note(`  would write ${skillFile} (with version/always frontmatter)`);
-    log.note(`  would ${fs.existsSync(soulFile) ? 'append to' : 'create'} ${soulFile} (caveman bootstrap block)`);
+    log.note(`  would ${fs.existsSync(soulFile) ? 'append to' : 'create'} ${soulFile} (sweet bootstrap block)`);
     return { ok: true, dryRun: true };
   }
 
@@ -234,7 +237,7 @@ function installOpenclaw({ workspace, repoRoot, dryRun = false, force = false, l
 
   const soul = appendBootstrapToSoul(soulFile, snippet);
   if (soul.changed) log.write(`  wrote bootstrap block to ${soulFile}\n`);
-  else log.note(`  ${soulFile} already contains caveman bootstrap`);
+  else log.note(`  ${soulFile} already contains sweet bootstrap`);
 
   return { ok: true };
 }
@@ -258,12 +261,12 @@ function uninstallOpenclaw({ workspace, dryRun = false, log = noopLog() } = {}) 
 
   if (fs.existsSync(soulFile)) {
     if (dryRun) {
-      log.note(`  would strip caveman block from ${soulFile}`);
+      log.note(`  would strip sweet block from ${soulFile}`);
       touched = true;
     } else {
       const r = stripBootstrapFromSoul(soulFile);
       if (r.changed) {
-        log.note(r.removed ? `  removed ${soulFile}` : `  stripped caveman block from ${soulFile}`);
+        log.note(r.removed ? `  removed ${soulFile}` : `  stripped sweet block from ${soulFile}`);
         touched = true;
       }
     }

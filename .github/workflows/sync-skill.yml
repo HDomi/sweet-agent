@@ -4,11 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - skills/caveman/SKILL.md
-      - skills/cavecrew/SKILL.md
-      - agents/cavecrew-*.md
-      - skills/caveman-compress/SKILL.md
-      - skills/caveman-compress/scripts/**
+      - skills/sweet/SKILL.md
+      - skills/sweetcrew/SKILL.md
+      - agents/sweetcrew-*.md
+      - skills/sweet-compress/SKILL.md
+      - skills/sweet-compress/scripts/**
+      - skills/sweet-stats/SKILL.md
 
 concurrency:
   group: sync-skill
@@ -32,39 +33,50 @@ jobs:
 
       - name: Sync SKILL.md copies
         run: |
-          cp skills/caveman/SKILL.md plugins/caveman/skills/caveman/SKILL.md
+          cp skills/sweet/SKILL.md plugins/sweet-agent/skills/sweet/SKILL.md
 
-      - name: Sync caveman-compress skill to plugin
+      - name: Sync sweet-compress skill to plugin
         run: |
           # Plugin distribution mirrors source verbatim — no rename, no sed.
-          mkdir -p plugins/caveman/skills/caveman-compress
-          cp skills/caveman-compress/SKILL.md plugins/caveman/skills/caveman-compress/SKILL.md
-          rm -rf plugins/caveman/skills/caveman-compress/scripts
-          cp -r skills/caveman-compress/scripts plugins/caveman/skills/caveman-compress/scripts
-          rm -rf plugins/caveman/skills/caveman-compress/scripts/__pycache__
+          mkdir -p plugins/sweet-agent/skills/sweet-compress
+          cp skills/sweet-compress/SKILL.md plugins/sweet-agent/skills/sweet-compress/SKILL.md
+          rm -rf plugins/sweet-agent/skills/sweet-compress/scripts
+          cp -r skills/sweet-compress/scripts plugins/sweet-agent/skills/sweet-compress/scripts
+          rm -rf plugins/sweet-agent/skills/sweet-compress/scripts/__pycache__
 
-      - name: Sync cavecrew skill + agents to plugin
+      - name: Sync sweetcrew skill + agents to plugin
         run: |
-          mkdir -p plugins/caveman/skills/cavecrew plugins/caveman/agents
-          cp skills/cavecrew/SKILL.md plugins/caveman/skills/cavecrew/SKILL.md
-          cp agents/cavecrew-investigator.md plugins/caveman/agents/cavecrew-investigator.md
-          cp agents/cavecrew-builder.md plugins/caveman/agents/cavecrew-builder.md
-          cp agents/cavecrew-reviewer.md plugins/caveman/agents/cavecrew-reviewer.md
+          mkdir -p plugins/sweet-agent/skills/sweetcrew plugins/sweet-agent/agents
+          cp skills/sweetcrew/SKILL.md plugins/sweet-agent/skills/sweetcrew/SKILL.md
+          cp agents/sweetcrew-investigator.md plugins/sweet-agent/agents/sweetcrew-investigator.md
+          cp agents/sweetcrew-builder.md plugins/sweet-agent/agents/sweetcrew-builder.md
+          cp agents/sweetcrew-reviewer.md plugins/sweet-agent/agents/sweetcrew-reviewer.md
 
-      - name: Rebuild caveman.skill ZIP
-        run: mkdir -p dist && cd skills && zip -r ../dist/caveman.skill caveman/
+      # Upstream left this mirror to drift (hand-committed, never synced).
+      # plugins/sweet-agent/skills/sweet-stats/ exists, so keep it in sync too.
+      - name: Sync sweet-stats skill to plugin
+        run: |
+          mkdir -p plugins/sweet-agent/skills/sweet-stats
+          cp skills/sweet-stats/SKILL.md plugins/sweet-agent/skills/sweet-stats/SKILL.md
+
+      - name: Rebuild sweet.skill ZIP
+        run: mkdir -p dist && cd skills && zip -r ../dist/sweet.skill sweet/
+
+      - name: Verify mirrors and zip match source
+        run: python3 tests/verify_repo.py
 
       - name: Commit and push if changed
         run: |
           git add \
-            skills/caveman-compress/ \
-            plugins/caveman/skills/caveman-compress/ \
-            plugins/caveman/skills/caveman/SKILL.md \
-            plugins/caveman/skills/cavecrew/SKILL.md \
-            plugins/caveman/agents/cavecrew-investigator.md \
-            plugins/caveman/agents/cavecrew-builder.md \
-            plugins/caveman/agents/cavecrew-reviewer.md \
-            dist/caveman.skill
+            skills/sweet-compress/ \
+            plugins/sweet-agent/skills/sweet-compress/ \
+            plugins/sweet-agent/skills/sweet/SKILL.md \
+            plugins/sweet-agent/skills/sweetcrew/SKILL.md \
+            plugins/sweet-agent/skills/sweet-stats/SKILL.md \
+            plugins/sweet-agent/agents/sweetcrew-investigator.md \
+            plugins/sweet-agent/agents/sweetcrew-builder.md \
+            plugins/sweet-agent/agents/sweetcrew-reviewer.md \
+            dist/sweet.skill
           git diff --staged --quiet && exit 0
           git commit -m "chore: sync SKILL.md copies [skip ci]"
           git push

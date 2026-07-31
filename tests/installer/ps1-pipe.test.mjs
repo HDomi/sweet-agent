@@ -52,7 +52,7 @@ test('#565 install.ps1 invokes its function at the bottom (script still does som
   const lastLines = code.trim().split('\n').slice(-3).join('\n');
   assert.match(
     lastLines,
-    /Install-Caveman/,
-    'install.ps1 must actually invoke Install-Caveman after defining it',
+    /Install-Sweet/,
+    'install.ps1 must actually invoke Install-Sweet after defining it',
   );
 });

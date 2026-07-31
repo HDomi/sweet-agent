@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caveman | Lithic Token Compression</title>
+<title>sweet-agent | 한국어 초압축 응답 모드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -33,7 +33,6 @@ body {
   background-color: var(--bg); color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   overflow-x: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.02em;
-  cursor: url("assets/dancing-rock-32.png") 16 16, auto;
 }
 
 ::selection { background: var(--text-primary); color: var(--bg); }
@@ -208,21 +207,21 @@ body {
 <div class="telemetry-widget">
   <div>STATUS: <span class="telemetry-val" style="color:#4ade80">OPTIMIZED</span></div>
   <div>PHYSICAL_IMPACTS: <span class="telemetry-val" id="bonkCount">0</span></div>
-  <div>TOKENS_PURGED: <span class="telemetry-val">65%</span></div>
+  <div>OUTPUT_TOKENS: <span class="telemetry-val">DOWN</span></div>
 </div>
 
 <section class="hero container">
   <div class="reveal">
-    <a href="https://github.com/JuliusBrussee/caveman" target="_blank" class="hero-repo">
+    <a href="https://github.com/HDomi/sweet-agent" target="_blank" class="hero-repo">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
-      JuliusBrussee / caveman
+      HDomi / sweet-agent
     </a>
-    <h1>Few tokens.<br>Do trick.</h1>
-    <p class="hero-subtitle">A semantic constraint engine for Claude Code & Codex. Forces agentic communication into minimal-token lithic structures. Retain 100% technical accuracy while destroying up to 87% of output latency.</p>
+    <h1>말 짧게 해도<br>다 알아들어.</h1>
+    <p class="hero-subtitle">Claude Code, Codex, Cursor 등 30여 개 에이전트용 스킬. AI 에이전트가 20대 여자애처럼 다정한 반말로, 짧게 답하게 만든다. 코드와 에러 메시지는 한 글자도 안 바뀐다.</p>
     
     <div class="cli-install">
       <span class="cli-prefix">❯</span>
-      <span class="cli-code">npx skills add JuliusBrussee/caveman</span>
+      <span class="cli-code">npx skills add HDomi/sweet-agent -a cursor</span>
       <button class="cli-btn" onclick="copyInstall(this)">Copy</button>
     </div>
   </div>
@@ -234,124 +233,88 @@ body {
 </div>
 
 <section class="section container reveal">
-  <span class="section-badge">01 // Compression Matrix</span>
-  <h2 class="section-title">The Lithic Payload Diff</h2>
-  <p class="section-desc">Visualize the exact tokens purged by the Caveman protocol. Technical imperatives are retained; conversational padding is annihilated.</p>
+  <span class="section-badge">01 // 압축 비교</span>
+  <h2 class="section-title">뭐가 사라지나</h2>
+  <p class="section-desc">군더더기, 조사, 상투어, 완충 표현이 사라진다. 기술적 내용은 전부 그대로 남는다.</p>
 
   <div class="diff-container">
     <div class="diff-header">
-      <span>Payload: React Re-render Diagnosis</span>
-      <span style="color: var(--text-primary);">69 Tokens → 19 Tokens</span>
+      <span>예시: React 리렌더 진단</span>
+      <span style="color: var(--text-primary);">긴 문단 → 한 줄</span>
     </div>
     <div class="diff-body" id="diffBody">
-      <span class="diff-strike">"The reason your React component is re-rendering is likely because you're creating a</span> <span class="diff-keep">New</span> object ref<span class="diff-keep">erence on</span> each render <span class="diff-strike">cycle. When you pass an</span> inline object <span class="diff-strike">as a</span> prop<span class="diff-strike">, React's shallow comparison sees it as a different object every time, which triggers a</span> = new ref = re-render. <span class="diff-strike">I'd recommend using</span> <span class="diff-keep">Wrap in <code>useMemo</code></span><span class="diff-strike"> to memoize the object."</span>
+      <span class="diff-strike">"React 컴포넌트가 리렌더링되는 이유는 </span><span class="diff-keep">렌더마다 새 객체 참조</span><span class="diff-strike">가 생성되고 있기 때문일 가능성이 높습니다. </span><span class="diff-keep">생겨. 인라인 객체 prop = 새 참조 = 리렌더.</span><span class="diff-strike"> 인라인 객체를 prop으로 전달하면 React의 얕은 비교가 매번 다른 객체로 인식하여 리렌더링이 발생합니다. useMemo를 사용해 객체를 메모이제이션하는 것을 권장합니다."</span> <span class="diff-keep"><code>useMemo</code>로 감싸 오빠~</span>
     </div>
     <div class="diff-toggle">
-      <button class="toggle-btn active" onclick="setDiffMode('diff', this)">View Diff</button>
-      <button class="toggle-btn" onclick="setDiffMode('caveman', this)">Output Only</button>
+      <button class="toggle-btn active" onclick="setDiffMode('diff', this)">비교 보기</button>
+      <button class="toggle-btn" onclick="setDiffMode('sweet', this)">결과만</button>
     </div>
   </div>
 </section>
 
 <section class="section container reveal">
-  <span class="section-badge">02 // Empirical Data</span>
-  <h2 class="section-title">Token Latency Reduction</h2>
-  <p class="section-desc">Average reduction of 65% across standard software engineering tasks. Reasoning tokens remain unaffected; only the output payload is compressed.</p>
-
-  <div class="viz-container">
-    <div class="viz-row">
-      <div class="viz-label">Explain React re-render bug</div>
-      <div class="viz-track-container">
-        <div class="viz-track"><div class="viz-fill" style="width: 13.4%;"></div></div>
-        <div class="viz-stats"><span>159/1180</span> 87%</div>
-      </div>
-    </div>
-    <div class="viz-row">
-      <div class="viz-label">Fix auth token expiry</div>
-      <div class="viz-track-container">
-        <div class="viz-track"><div class="viz-fill" style="width: 17.1%;"></div></div>
-        <div class="viz-stats"><span>121/704</span> 83%</div>
-      </div>
-    </div>
-    <div class="viz-row">
-      <div class="viz-label">Debug PostgreSQL race condition</div>
-      <div class="viz-track-container">
-        <div class="viz-track"><div class="viz-fill" style="width: 19.3%;"></div></div>
-        <div class="viz-stats"><span>232/1200</span> 81%</div>
-      </div>
-    </div>
-    <div class="viz-row">
-      <div class="viz-label">Explain git rebase vs merge</div>
-      <div class="viz-track-container">
-        <div class="viz-track"><div class="viz-fill" style="width: 41.5%;"></div></div>
-        <div class="viz-stats"><span>292/702</span> 58%</div>
-      </div>
-    </div>
-    <div class="viz-row">
-      <div class="viz-label">Review PR for security</div>
-      <div class="viz-track-container">
-        <div class="viz-track"><div class="viz-fill" style="width: 58.7%;"></div></div>
-        <div class="viz-stats"><span>398/678</span> 41%</div>
-      </div>
-    </div>
-  </div>
+  <span class="section-badge">02 // 측정</span>
+  <h2 class="section-title">아직 측정 안 했다</h2>
+  <p class="section-desc">이 프로젝트는 영어 <a href="https://github.com/JuliusBrussee/caveman" target="_blank" style="color:var(--accent)">caveman</a> 에서 갈라져 나왔다. 원본에는 "출력 토큰 65% 절감" 이라는 실측치가 있었지만, 그건 <strong>영어</strong> 압축 문체를 측정한 값이다. 한국어 반말은 압축되는 방식도, 토크나이저에서 문자당 토큰 수도 다르다. 근거 없는 숫자를 옮겨 적지 않기로 했으므로 지웠다.</p>
+  <p class="section-desc" style="margin-top:16px">직접 재려면 <code>benchmarks/prompts.json</code> 을 한국어로 채우고 <code>benchmarks/run.py</code> 를 돌리면 된다. 측정 전까지 <code>/sweet-stats</code> 는 실제 토큰 수만 보여주고 절감 추정은 생략한다 — 추측한 숫자를 내놓지 않는다.</p>
+  <p class="section-desc" style="margin-top:16px">줄어드는 건 <strong>출력 토큰뿐</strong>이다. 입력과 추론 토큰은 그대로고, 스킬 자체가 매 턴 입력 토큰을 추가한다. 이미 짧게 답하는 작업에서는 오히려 손해일 수 있다. 어느 쪽인지 판단하는 기준은 <a href="./HONEST-NUMBERS.md" style="color:var(--accent)">숫자에 대해</a> 문서에 있다.</p>
 </section>
 
 <section class="section container reveal">
-  <span class="section-badge">03 // Lexical Ruleset</span>
-  <h2 class="section-title">Execution Architecture</h2>
+  <span class="section-badge">03 // 규칙</span>
+  <h2 class="section-title">어떻게 동작하나</h2>
   
   <div class="bento-grid">
     <div class="bento-box bento-large">
       <div class="bento-icon">💀</div>
-      <div class="bento-title">Pleasantry Annihilation</div>
-      <div class="bento-desc">Standard LLMs waste compute on sycophantic hedging: "I'd be happy to help," or "It might be worth considering." Caveman protocol identifies and destroys these patterns at the generation layer.</div>
+      <div class="bento-title">상투어 제거</div>
+      <div class="bento-desc">평범한 LLM 은 "네, 기꺼이 도와드리겠습니다", "~하시는 것을 고려해보시면 좋을 것 같습니다" 같은 말에 토큰을 쓴다. 스윗은 상투어, 완충 표현, 조사, 군더더기를 생성 단계에서 버린다.</div>
     </div>
     <div class="bento-box">
       <div class="bento-icon">✍️</div>
-      <div class="bento-title">Code Preservation</div>
-      <div class="bento-desc">Code blocks, Git commits, and PR descriptions bypass the lithic filter. Caveman writes normal code.</div>
+      <div class="bento-title">코드 보존</div>
+      <div class="bento-desc">코드 블록, 커밋 메시지, PR 설명은 압축을 거치지 않는다. 명령어, 파일 경로, 에러 문자열, API 이름은 영문 원문 그대로.</div>
     </div>
     <div class="bento-box">
       <div class="bento-icon">🧠</div>
-      <div class="bento-title">Nomenclature Integrity</div>
-      <div class="bento-desc">Technical jargon is retained precisely. "Polymorphism" remains "polymorphism." Caveman not stupid. Caveman efficient.</div>
+      <div class="bento-title">용어 정확성</div>
+      <div class="bento-desc">기술 용어는 그대로 둔다. 새 약어를 만들지 않는다 — 설정→셋, 구현→임플 같은 축약은 토큰 절약이 0인데 해독 비용만 든다.</div>
     </div>
     <div class="bento-box bento-large">
-      <div class="bento-icon">🔬</div>
-      <div class="bento-title">Scientific Backing</div>
-      <div class="bento-desc">Based on the March 2026 paper <em>"Brevity Constraints Reverse Performance Hierarchies in Language Models"</em>. Forcing brevity improves accuracy by 26 percentage points on key benchmarks. Less word = more correct.</div>
+      <div class="bento-icon">🛡️</div>
+      <div class="bento-title">자동 명확화</div>
+      <div class="bento-desc">압축이 위험해지는 지점에서는 알아서 완전한 문장으로 돌아온다: 보안 경고, 되돌릴 수 없는 작업 확인(<code>DROP TABLE</code>, <code>rm -rf</code>, force push), 순서를 잘못 읽으면 안 되는 다단계 절차, 사용자가 못 알아들었을 때. 끝나면 다시 짧아진다.</div>
     </div>
   </div>
 </section>
 
 <section class="section container reveal">
-  <span class="section-badge">04 // Interface</span>
-  <h2 class="section-title">Initialize Protocol</h2>
+  <span class="section-badge">04 // 설치</span>
+  <h2 class="section-title">시작하기</h2>
   
   <div class="glass-terminal">
     <div class="term-header">
       <div class="term-dot"></div><div class="term-dot"></div><div class="term-dot"></div>
     </div>
     <div class="term-body" id="termBody">
-      <div class="term-line">System ready. Establishing connection to Claude Code Env...</div>
-      <div class="term-line">Installing plugins via marketplace...</div>
-      <div class="term-line term-accent">claude plugin install caveman@caveman</div>
-      <div class="term-line" style="margin-top: 16px;">Trigger the protocol:</div>
-      <div class="term-line term-accent">/caveman</div>
-      <div class="term-line">Me ready.</div>
+      <div class="term-line">에이전트를 찾아서 각각 설치한다. Node 18 이상 필요.</div>
+      <div class="term-line">macOS · Linux · WSL:</div>
+      <div class="term-line term-accent">curl -fsSL https://raw.githubusercontent.com/HDomi/sweet-agent/main/install.sh | bash</div>
+      <div class="term-line" style="margin-top: 16px;">켜기:</div>
+      <div class="term-line term-accent">/sweet</div>
+      <div class="term-line">끄기: "스윗 끄기" / "그만" / "normal mode"</div>
       
       <div class="term-input-row">
         <span class="term-accent">❯</span>
-        <input class="term-input" id="cli-input" type="text" autocomplete="off" spellcheck="false" placeholder="Enter prompt or impact surface anywhere to bonk...">
+        <input class="term-input" id="cli-input" type="text" autocomplete="off" spellcheck="false" placeholder="아무 데나 눌러봐...">
       </div>
     </div>
   </div>
 </section>
 
 <footer class="footer">
-  <div>Built by <a href="https://github.com/JuliusBrussee" target="_blank">Julius Brussee</a>. See also: <a href="https://revu.cards" target="_blank">Revu</a>.</div>
-  <div>MIT License. Operational.</div>
+  <div><a href="https://github.com/JuliusBrussee/caveman" target="_blank">caveman</a> (MIT) 에서 갈라져 나옴. <a href="https://github.com/HDomi/sweet-agent" target="_blank">HDomi/sweet-agent</a></div>
+  <div>MIT License.</div>
 </footer>
 
 <script>
@@ -363,9 +326,9 @@ document.addEventListener('mousemove', (e) => {
 
 // --- Marquee Population ---
 const items = [
-  { k: "TOKENS_SAVED", v: "65%" }, { k: "ACCURACY", v: "100%" },
-  { k: "LATENCY_DROP", v: "3x" }, { k: "VIBES", v: "OOG" },
-  { k: "PRICE", v: "$0.00" }, { k: "DEPENDENCIES", v: "NONE" }
+  { k: "언어", v: "한국어" }, { k: "말투", v: "반말" },
+  { k: "기술 정확도", v: "100%" }, { k: "가격", v: "$0.00" },
+  { k: "텔레메트리", v: "없음" }, { k: "의존성", v: "없음" }
 ];
 const track = document.getElementById('marqueeTrack');
 const marqueeHTML = [...items, ...items, ...items].map(i => `<div class="marquee-item">${i.k}<span>${i.v}</span></div>`).join('');
@@ -373,7 +336,7 @@ track.innerHTML = marqueeHTML;
 
 // --- Copy Install ---
 function copyInstall(btn) {
-  navigator.clipboard.writeText('npx skills add JuliusBrussee/caveman');
+  navigator.clipboard.writeText('npx skills add HDomi/sweet-agent -a cursor');
   btn.textContent = 'Copied';
   btn.style.background = 'var(--accent)';
   btn.style.color = '#000';
@@ -390,9 +353,9 @@ function setDiffMode(mode, btn) {
   const body = document.getElementById('diffBody');
   
   if (mode === 'diff') {
-    body.innerHTML = `<span class="diff-strike">"The reason your React component is re-rendering is likely because you're creating a</span> <span class="diff-keep">New</span> object ref<span class="diff-keep">erence on</span> each render <span class="diff-strike">cycle. When you pass an</span> inline object <span class="diff-strike">as a</span> prop<span class="diff-strike">, React's shallow comparison sees it as a different object every time, which triggers a</span> = new ref = re-render. <span class="diff-strike">I'd recommend using</span> <span class="diff-keep">Wrap in <code>useMemo</code></span><span class="diff-strike"> to memoize the object."</span>`;
+    body.innerHTML = `<span class="diff-strike">"React 컴포넌트가 리렌더링되는 이유는 </span><span class="diff-keep">렌더마다 새 객체 참조</span><span class="diff-strike">가 생성되고 있기 때문일 가능성이 높습니다. </span><span class="diff-keep">생겨. 인라인 객체 prop = 새 참조 = 리렌더.</span><span class="diff-strike"> 인라인 객체를 prop으로 전달하면 React의 얕은 비교가 매번 다른 객체로 인식하여 리렌더링이 발생합니다. useMemo를 사용해 객체를 메모이제이션하는 것을 권장합니다."</span> <span class="diff-keep"><code>useMemo</code>로 감싸 오빠~</span>`;
   } else {
-    body.innerHTML = `<span class="diff-keep">"New object ref each render. Inline object prop = new ref = re-render. Wrap in <code>useMemo</code>."</span>`;
+    body.innerHTML = `<span class="diff-keep">"렌더마다 새 객체 참조 생겨. 인라인 객체 prop = 새 참조 = 리렌더. <code>useMemo</code>로 감싸 오빠~"</span>`;
   }
 }
 
@@ -433,8 +396,8 @@ cliInput.addEventListener('keydown', (e) => {
     const res = document.createElement('div');
     res.className = 'term-line';
     res.style.color = 'var(--text-tertiary)';
-    if (val.toLowerCase() === 'help') res.textContent = "Commands: npx skills add JuliusBrussee/caveman";
-    else res.textContent = "Input received. Caveman processing... Done. Few words used.";
+    if (val.toLowerCase() === 'help') res.textContent = "Commands: npx skills add HDomi/sweet-agent -a cursor";
+    else res.textContent = "Input received. Sweet processing... Done. Few words used.";
     
     cliInput.parentElement.before(res);
     cliInput.value = '';

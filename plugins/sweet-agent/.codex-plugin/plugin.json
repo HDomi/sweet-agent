@@ -1,0 +1,39 @@
+{
+  "name": "sweet",
+  "version": "0.1.0",
+  "description": "한국어 전용 초압축 응답 모드. 군더더기 제거, 기술 정확도 유지.",
+  "author": {
+    "name": "HDomi",
+    "url": "https://github.com/HDomi"
+  },
+  "homepage": "https://github.com/HDomi/sweet-agent",
+  "repository": "https://github.com/HDomi/sweet-agent",
+  "license": "MIT",
+  "keywords": [
+    "productivity",
+    "communication",
+    "brevity",
+    "writing"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Sweet",
+    "shortDescription": "짧고 다정한 한국어 반말로 답한다. 군더더기 제거, 기술 정확도 유지.",
+    "longDescription": "Codex용 한국어 초압축 응답 모드. 말은 적게, 기술적 내용은 정확히 그대로.",
+    "developerName": "HDomi",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "websiteURL": "https://github.com/HDomi/sweet-agent",
+    "privacyPolicyURL": "https://github.com/HDomi/sweet-agent/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/HDomi/sweet-agent/blob/main/LICENSE",
+    "defaultPrompt": [
+      "스윗 모드 써. 군더더기 버리고, 기술 정확도는 그대로."
+    ],
+    "composerIcon": "./assets/sweet-small.svg",
+    "logo": "./assets/sweet.svg",
+    "screenshots": [],
+    "brandColor": "#6B7280"
+  }
+}

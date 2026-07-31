@@ -2,8 +2,8 @@
 
 Extensionless build files (`Dockerfile`, `Makefile`) and shebang scripts
 used to fall through to the content heuristic and come back as
-compressible natural language — so `/caveman-compress Dockerfile` would
-overwrite a Dockerfile with caveman prose. These tests pin the basename
+compressible natural language — so `/sweet-compress Dockerfile` would
+overwrite a Dockerfile with sweet prose. These tests pin the basename
 and shebang guards.
 """
 
@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "skills" / "caveman-compress"))
+sys.path.insert(0, str(REPO_ROOT / "skills" / "sweet-compress"))
 
 from scripts.detect import detect_file_type, should_compress  # noqa: E402
 

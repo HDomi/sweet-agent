@@ -28,17 +28,17 @@ class HookScriptTests(unittest.TestCase):
         )
 
     def test_install_upgrades_old_two_file_install(self):
-        with tempfile.TemporaryDirectory(prefix="caveman-hooks-upgrade-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="sweet-hooks-upgrade-") as tmp:
             home = Path(tmp)
             hooks_dir = home / ".claude" / "hooks"
             hooks_dir.mkdir(parents=True)
             (home / ".claude" / "settings.json").write_text("{}\n")
-            (hooks_dir / "caveman-activate.js").write_text("")
-            (hooks_dir / "caveman-mode-tracker.js").write_text("")
+            (hooks_dir / "sweet-activate.js").write_text("")
+            (hooks_dir / "sweet-mode-tracker.js").write_text("")
 
             self.run_cmd(["bash", "src/hooks/install.sh"], home)
 
-            statusline = hooks_dir / "caveman-statusline.sh"
+            statusline = hooks_dir / "sweet-statusline.sh"
             self.assertTrue(statusline.exists(), "upgrade should install statusline script")
 
             settings = json.loads((home / ".claude" / "settings.json").read_text())
@@ -46,13 +46,13 @@ class HookScriptTests(unittest.TestCase):
             self.assertIn(str(statusline), settings["statusLine"]["command"])
 
     def test_install_reconfigures_missing_statusline(self):
-        with tempfile.TemporaryDirectory(prefix="caveman-hooks-statusline-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="sweet-hooks-statusline-") as tmp:
             home = Path(tmp)
             claude_dir = home / ".claude"
             hooks_dir = claude_dir / "hooks"
             hooks_dir.mkdir(parents=True)
 
-            for name in ("caveman-activate.js", "caveman-mode-tracker.js", "caveman-statusline.sh"):
+            for name in ("sweet-activate.js", "sweet-mode-tracker.js", "sweet-statusline.sh"):
                 (hooks_dir / name).write_text("")
 
             settings = {
@@ -62,7 +62,7 @@ class HookScriptTests(unittest.TestCase):
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": f'node "{hooks_dir / "caveman-activate.js"}"',
+                                    "command": f'node "{hooks_dir / "sweet-activate.js"}"',
                                 }
                             ]
                         }
@@ -72,7 +72,7 @@ class HookScriptTests(unittest.TestCase):
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": f'node "{hooks_dir / "caveman-mode-tracker.js"}"',
+                                    "command": f'node "{hooks_dir / "sweet-mode-tracker.js"}"',
                                 }
                             ]
                         }
@@ -87,22 +87,22 @@ class HookScriptTests(unittest.TestCase):
 
             updated = json.loads((claude_dir / "settings.json").read_text())
             self.assertIn("statusLine", updated)
-            self.assertIn(str(hooks_dir / "caveman-statusline.sh"), updated["statusLine"]["command"])
+            self.assertIn(str(hooks_dir / "sweet-statusline.sh"), updated["statusLine"]["command"])
 
     def test_uninstall_preserves_custom_statusline(self):
-        with tempfile.TemporaryDirectory(prefix="caveman-hooks-uninstall-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="sweet-hooks-uninstall-") as tmp:
             home = Path(tmp)
             claude_dir = home / ".claude"
             hooks_dir = claude_dir / "hooks"
             hooks_dir.mkdir(parents=True)
 
-            for name in ("caveman-activate.js", "caveman-mode-tracker.js", "caveman-statusline.sh"):
+            for name in ("sweet-activate.js", "sweet-mode-tracker.js", "sweet-statusline.sh"):
                 (hooks_dir / name).write_text("")
 
             settings = {
                 "statusLine": {
                     "type": "command",
-                    "command": "bash /tmp/custom-status-with-caveman.sh",
+                    "command": "bash /tmp/custom-status-with-sweet.sh",
                 },
                 "hooks": {
                     "SessionStart": [
@@ -110,7 +110,7 @@ class HookScriptTests(unittest.TestCase):
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": f'node "{hooks_dir / "caveman-activate.js"}"',
+                                    "command": f'node "{hooks_dir / "sweet-activate.js"}"',
                                 }
                             ]
                         }
@@ -120,7 +120,7 @@ class HookScriptTests(unittest.TestCase):
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": f'node "{hooks_dir / "caveman-mode-tracker.js"}"',
+                                    "command": f'node "{hooks_dir / "sweet-mode-tracker.js"}"',
                                 }
                             ]
                         }
@@ -134,12 +134,12 @@ class HookScriptTests(unittest.TestCase):
             updated = json.loads((claude_dir / "settings.json").read_text())
             self.assertEqual(
                 updated["statusLine"]["command"],
-                "bash /tmp/custom-status-with-caveman.sh",
+                "bash /tmp/custom-status-with-sweet.sh",
             )
             self.assertNotIn("hooks", updated)
 
     def test_activate_does_not_nudge_when_custom_statusline_exists(self):
-        with tempfile.TemporaryDirectory(prefix="caveman-hooks-activate-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="sweet-hooks-activate-") as tmp:
             home = Path(tmp)
             claude_dir = home / ".claude"
             claude_dir.mkdir(parents=True)
@@ -155,59 +155,59 @@ class HookScriptTests(unittest.TestCase):
                 + "\n"
             )
 
-            result = self.run_cmd(["node", "src/hooks/caveman-activate.js"], home)
+            result = self.run_cmd(["node", "src/hooks/sweet-activate.js"], home)
 
             self.assertNotIn("STATUSLINE SETUP NEEDED", result.stdout)
-            self.assertEqual((claude_dir / ".caveman-active").read_text(), "full")
+            self.assertEqual((claude_dir / ".sweet-active").read_text(), "full")
 
     # Regression for #587/#589 — hook at <root>/src/hooks/ must resolve SKILL.md
-    # at <root>/skills/caveman/, not the nonexistent <root>/src/skills/.
+    # at <root>/skills/sweet/, not the nonexistent <root>/src/skills/.
     def test_activate_emits_skill_md_not_fallback_from_repo_layout(self):
-        with tempfile.TemporaryDirectory(prefix="caveman-hooks-skillpath-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="sweet-hooks-skillpath-") as tmp:
             home = Path(tmp)
             (home / ".claude").mkdir(parents=True)
 
-            result = self.run_cmd(["node", "src/hooks/caveman-activate.js"], home)
+            result = self.run_cmd(["node", "src/hooks/sweet-activate.js"], home)
 
             # Intensity table exists only in SKILL.md, never in the fallback
-            self.assertIn("## Intensity", result.stdout)
+            self.assertIn("## 강도", result.stdout)
             # Default mode is full — table filtered to the active level's row
             self.assertIn("| **full** |", result.stdout)
             self.assertNotIn("| **lite** |", result.stdout)
 
     def test_activate_finds_skill_beside_config_dir_hooks(self):
         # Standalone layout: hooks at $CLAUDE_CONFIG_DIR/hooks/, skill installed
-        # at $CLAUDE_CONFIG_DIR/skills/caveman/SKILL.md
-        with tempfile.TemporaryDirectory(prefix="caveman-hooks-standalone-") as tmp:
+        # at $CLAUDE_CONFIG_DIR/skills/sweet/SKILL.md
+        with tempfile.TemporaryDirectory(prefix="sweet-hooks-standalone-") as tmp:
             home = Path(tmp)
             claude_dir = home / ".claude"
             hooks_dir = claude_dir / "hooks"
             hooks_dir.mkdir(parents=True)
-            for name in ("caveman-activate.js", "caveman-config.js", "package.json"):
+            for name in ("sweet-activate.js", "sweet-config.js", "package.json"):
                 shutil.copy(REPO_ROOT / "src" / "hooks" / name, hooks_dir / name)
-            skill_dir = claude_dir / "skills" / "caveman"
+            skill_dir = claude_dir / "skills" / "sweet"
             skill_dir.mkdir(parents=True)
             (skill_dir / "SKILL.md").write_text(
-                "---\nname: caveman\n---\nSTANDALONE MARKER RULESET\n"
+                "---\nname: sweet\n---\nSTANDALONE MARKER RULESET\n"
             )
 
-            result = self.run_cmd(["node", str(hooks_dir / "caveman-activate.js")], home)
+            result = self.run_cmd(["node", str(hooks_dir / "sweet-activate.js")], home)
 
             self.assertIn("STANDALONE MARKER RULESET", result.stdout)
 
     def test_activate_prefers_claude_plugin_root(self):
-        with tempfile.TemporaryDirectory(prefix="caveman-hooks-pluginroot-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="sweet-hooks-pluginroot-") as tmp:
             home = Path(tmp)
             (home / ".claude").mkdir(parents=True)
             plugin_root = home / "plugin-cache"
-            skill_dir = plugin_root / "skills" / "caveman"
+            skill_dir = plugin_root / "skills" / "sweet"
             skill_dir.mkdir(parents=True)
             (skill_dir / "SKILL.md").write_text(
-                "---\nname: caveman\n---\nPLUGIN ROOT MARKER RULESET\n"
+                "---\nname: sweet\n---\nPLUGIN ROOT MARKER RULESET\n"
             )
 
             result = self.run_cmd(
-                ["node", "src/hooks/caveman-activate.js"],
+                ["node", "src/hooks/sweet-activate.js"],
                 home,
                 extra_env={"CLAUDE_PLUGIN_ROOT": str(plugin_root)},
             )

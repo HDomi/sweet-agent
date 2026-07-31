@@ -1,15 +1,15 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "caveman",
-  "description": "Ultra-compressed communication mode for Claude Code. Cuts 65% of output tokens (measured) while keeping full technical accuracy.",
+  "name": "sweet",
+  "description": "Claude Code용 한국어 초압축 응답 모드. 다정한 반말로 짧게, 기술 정확도는 그대로.",
   "owner": {
-    "name": "Julius Brussee",
-    "url": "https://github.com/JuliusBrussee"
+    "name": "HDomi",
+    "url": "https://github.com/HDomi"
   },
   "plugins": [
     {
-      "name": "caveman",
-      "description": "Talk like caveman. Cut 65% output tokens (measured). Keep all technical accuracy.",
+      "name": "sweet",
+      "description": "짧고 다정한 한국어 반말로 답한다. 군더더기 제거, 기술 정확도 유지.",
       "source": "./",
       "category": "productivity"
     }

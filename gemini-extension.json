@@ -1,6 +1,6 @@
 {
-  "name": "caveman",
-  "description": "Ultra-compressed communication mode. Cuts 65% of output tokens (measured) while keeping full technical accuracy by speaking like a caveman.",
+  "name": "sweet",
+  "description": "한국어 전용 초압축 응답 모드. 20대 여성의 다정한 반말로 짧게 답하면서 기술 정확도는 그대로 지킨다.",
   "version": "1.0.1",
   "contextFileName": "GEMINI.md"
 }

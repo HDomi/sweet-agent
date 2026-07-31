@@ -1,4 +1,4 @@
-# Install caveman
+# Install sweet
 
 One install. Works for every AI coding agent on your machine.
 
@@ -9,28 +9,28 @@ If just want it to work, run the one-liner. If want to know what gets touched, s
 **macOS / Linux / WSL / Git Bash**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/HDomi/sweet-agent/main/install.sh | bash
 ```
 
 **Windows (PowerShell 5.1+)**
 
 ```powershell
-irm https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/HDomi/sweet-agent/main/install.ps1 | iex
 ```
 
-> Piping a script straight into a shell runs it sight-unseen. If you'd rather read it first, download then run: `curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh -o install.sh` (review it) `&& bash install.sh`. The installer downloads hook files from a pinned release tag and verifies them against a committed SHA-256 manifest before writing.
+> Piping a script straight into a shell runs it sight-unseen. If you'd rather read it first, download then run: `curl -fsSL https://raw.githubusercontent.com/HDomi/sweet-agent/main/install.sh -o install.sh` (review it) `&& bash install.sh`. The installer downloads hook files from a pinned release tag and verifies them against a committed SHA-256 manifest before writing.
 
 What it does:
 
 - Auto-detects every supported agent installed on your machine (Claude Code, Cursor, Codex, etc.).
 - For each one, runs that agent's native install path (plugin / extension / rule file / `npx skills add`).
-- Wires Claude Code hooks and statusline badge on top. (`caveman-shrink` MCP middleware is opt-in via `--with-mcp-shrink` — see flag table below.)
+- Wires Claude Code hooks and statusline badge on top. (`sweet-shrink` MCP middleware is opt-in via `--with-mcp-shrink` — see flag table below.)
 - Skips anything you don't have. Safe to re-run. ~30 seconds end-to-end.
 
 Want to preview before installing? Use `--dry-run`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/HDomi/sweet-agent/main/install.sh | bash -s -- --dry-run
 ```
 
 ## Per-agent install
@@ -39,45 +39,45 @@ If you want to install for one agent (or want to know exactly what command runs 
 
 | Agent | Install command | Auto-activates? |
 |---|---|:-:|
-| **Claude Code** | `claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman` | Yes |
-| **Gemini CLI** | `gemini extensions install https://github.com/JuliusBrussee/caveman` | Yes |
-| **opencode** | `node bin/install.js --only opencode` *(or `npx -y github:JuliusBrussee/caveman -- --only opencode`)* | Yes (plugin + AGENTS.md) |
-| **OpenClaw** | `npx -y github:JuliusBrussee/caveman -- --only openclaw` | Yes (workspace skill + SOUL.md) |
-| **Hermes Agent** | `npx -y github:JuliusBrussee/caveman -- --only hermes` *(or `node bin/install.js --only hermes` from a clone)* | Yes (native skills, enabled on load) |
-| **Codex CLI** | `npx skills add JuliusBrussee/caveman -a codex` | Per-session: `/caveman` |
-| **Cursor** | `npx skills add JuliusBrussee/caveman -a cursor` | Per-session by default; `--with-init` for an always-on rule file |
-| **Windsurf** | `npx skills add JuliusBrussee/caveman -a windsurf` | Per-session by default; `--with-init` for an always-on rule file |
-| **Cline** | `npx skills add JuliusBrussee/caveman -a cline` | Per-session by default; `--with-init` for an always-on rule file |
-| **GitHub Copilot** *(soft probe)* | `npx -y github:JuliusBrussee/caveman -- --only copilot --with-init` | Repo-wide instructions via `--with-init` |
-| **Continue** | `npx skills add JuliusBrussee/caveman -a continue` | No — say `/caveman` |
-| **Kilo Code** | `npx skills add JuliusBrussee/caveman -a kilo` | No |
-| **Roo Code** | `npx skills add JuliusBrussee/caveman -a roo` | No |
-| **Augment Code** | `npx skills add JuliusBrussee/caveman -a augment` | No |
-| **Aider Desk** | `npx skills add JuliusBrussee/caveman -a aider-desk` | No |
-| **Sourcegraph Amp** | `npx skills add JuliusBrussee/caveman -a amp` | No |
-| **IBM Bob** | `npx skills add JuliusBrussee/caveman -a bob` | No |
-| **Crush** | `npx skills add JuliusBrussee/caveman -a crush` | No |
-| **Devin (terminal)** | `npx skills add JuliusBrussee/caveman -a devin` | No |
-| **Droid (Factory)** | `npx skills add JuliusBrussee/caveman -a droid` | No |
-| **ForgeCode** | `npx skills add JuliusBrussee/caveman -a forgecode` | No |
-| **Block Goose** | `npx skills add JuliusBrussee/caveman -a goose` | No |
-| **iFlow CLI** | `npx skills add JuliusBrussee/caveman -a iflow-cli` | No |
-| **Kiro CLI** | `npx skills add JuliusBrussee/caveman -a kiro-cli` | No |
-| **Mistral Vibe** | `npx skills add JuliusBrussee/caveman -a mistral-vibe` | No |
-| **OpenHands** | `npx skills add JuliusBrussee/caveman -a openhands` | No |
-| **Qwen Code** | `npx skills add JuliusBrussee/caveman -a qwen-code` | No |
-| **Atlassian Rovo Dev** | `npx skills add JuliusBrussee/caveman -a rovodev` | No |
-| **Tabnine CLI** | `npx skills add JuliusBrussee/caveman -a tabnine-cli` | No |
-| **Trae** | `npx skills add JuliusBrussee/caveman -a trae` | No |
-| **Warp** | `npx skills add JuliusBrussee/caveman -a warp` | No |
-| **Replit Agent** | `npx skills add JuliusBrussee/caveman -a replit` | No |
-| **JetBrains Junie** *(soft probe)* | `npx skills add JuliusBrussee/caveman -a junie` | No |
-| **Qoder** *(soft probe)* | `npx skills add JuliusBrussee/caveman -a qoder` | No |
-| **Google Antigravity** *(soft probe)* | `npx skills add JuliusBrussee/caveman -a antigravity` | No |
+| **Claude Code** | `claude plugin marketplace add HDomi/sweet-agent && claude plugin install sweet@sweet` (권장 — 루트의 전체 SKILL.md 를 읽는다). `install.sh` / `install.ps1` 도 되지만 독립 훅만 깔려서 축약 규칙이 들어간다; `cp -R skills/sweet ~/.claude/skills/sweet` 로 보완. | Yes |
+| **Gemini CLI** | `gemini extensions install https://github.com/HDomi/sweet-agent` | Yes |
+| **opencode** | `node bin/install.js --only opencode` *(or `npx -y github:HDomi/sweet-agent -- --only opencode`)* | Yes (plugin + AGENTS.md) |
+| **OpenClaw** | `npx -y github:HDomi/sweet-agent -- --only openclaw` | Yes (workspace skill + SOUL.md) |
+| **Hermes Agent** | `npx -y github:HDomi/sweet-agent -- --only hermes` *(or `node bin/install.js --only hermes` from a clone)* | Yes (native skills, enabled on load) |
+| **Codex CLI** | `npx skills add HDomi/sweet-agent -a codex` | Per-session: `/sweet` |
+| **Cursor** | `npx skills add HDomi/sweet-agent -a cursor` | Per-session by default; `--with-init` for an always-on rule file |
+| **Windsurf** | `npx skills add HDomi/sweet-agent -a windsurf` | Per-session by default; `--with-init` for an always-on rule file |
+| **Cline** | `npx skills add HDomi/sweet-agent -a cline` | Per-session by default; `--with-init` for an always-on rule file |
+| **GitHub Copilot** *(soft probe)* | `npx -y github:HDomi/sweet-agent -- --only copilot --with-init` | Repo-wide instructions via `--with-init` |
+| **Continue** | `npx skills add HDomi/sweet-agent -a continue` | No — say `/sweet` |
+| **Kilo Code** | `npx skills add HDomi/sweet-agent -a kilo` | No |
+| **Roo Code** | `npx skills add HDomi/sweet-agent -a roo` | No |
+| **Augment Code** | `npx skills add HDomi/sweet-agent -a augment` | No |
+| **Aider Desk** | `npx skills add HDomi/sweet-agent -a aider-desk` | No |
+| **Sourcegraph Amp** | `npx skills add HDomi/sweet-agent -a amp` | No |
+| **IBM Bob** | `npx skills add HDomi/sweet-agent -a bob` | No |
+| **Crush** | `npx skills add HDomi/sweet-agent -a crush` | No |
+| **Devin (terminal)** | `npx skills add HDomi/sweet-agent -a devin` | No |
+| **Droid (Factory)** | `npx skills add HDomi/sweet-agent -a droid` | No |
+| **ForgeCode** | `npx skills add HDomi/sweet-agent -a forgecode` | No |
+| **Block Goose** | `npx skills add HDomi/sweet-agent -a goose` | No |
+| **iFlow CLI** | `npx skills add HDomi/sweet-agent -a iflow-cli` | No |
+| **Kiro CLI** | `npx skills add HDomi/sweet-agent -a kiro-cli` | No |
+| **Mistral Vibe** | `npx skills add HDomi/sweet-agent -a mistral-vibe` | No |
+| **OpenHands** | `npx skills add HDomi/sweet-agent -a openhands` | No |
+| **Qwen Code** | `npx skills add HDomi/sweet-agent -a qwen-code` | No |
+| **Atlassian Rovo Dev** | `npx skills add HDomi/sweet-agent -a rovodev` | No |
+| **Tabnine CLI** | `npx skills add HDomi/sweet-agent -a tabnine-cli` | No |
+| **Trae** | `npx skills add HDomi/sweet-agent -a trae` | No |
+| **Warp** | `npx skills add HDomi/sweet-agent -a warp` | No |
+| **Replit Agent** | `npx skills add HDomi/sweet-agent -a replit` | No |
+| **JetBrains Junie** *(soft probe)* | `npx skills add HDomi/sweet-agent -a junie` | No |
+| **Qoder** *(soft probe)* | `npx skills add HDomi/sweet-agent -a qoder` | No |
+| **Google Antigravity** *(soft probe)* | `npx skills add HDomi/sweet-agent -a antigravity` | No |
 
 "Soft probe" = installer won't auto-detect these without `--only <id>` because there's no reliable always-on signal (Copilot subscription state is auth-gated; the others have no CLI / config-dir-only). Pass the flag when you want them.
 
-For "auto-activates? No" agents, type `/caveman` once per session (or use natural-language triggers like "talk like caveman", "caveman mode").
+For "auto-activates? No" agents, type `/sweet` once per session, or use a natural-language trigger: "스윗 켜", "다정하게 말해", "반말로 해", "짧게 말해". Turn it off with "스윗 끄기", "그만", or "normal mode".
 
 **Finding a profile slug for `npx skills add ... -a <profile>`?** Either read the table above, or print the live matrix from the installer:
 
@@ -87,7 +87,7 @@ For "auto-activates? No" agents, type `/caveman` once per session (or use natura
 bash install.sh --list             # macOS / Linux / WSL, from a local clone
 pwsh install.ps1 --list            # Windows / PowerShell, from a local clone
 node bin/install.js --list         # any platform, from a local clone
-npx -y github:JuliusBrussee/caveman -- --list   # no clone needed
+npx -y github:HDomi/sweet-agent -- --list   # no clone needed
 ```
 
 Each row prints the agent id, profile slug (where applicable), and whether it was auto-detected on your machine. Full agent matrix (with detection rules) is also defined in `bin/install.js` under the `PROVIDERS` array.
@@ -98,8 +98,8 @@ If you'd rather see exactly what runs:
 
 ```bash
 # Clone the repo
-git clone https://github.com/JuliusBrussee/caveman.git
-cd caveman
+git clone https://github.com/HDomi/sweet-agent.git
+cd sweet
 
 # Preview every command the installer would run
 node bin/install.js --dry-run --all
@@ -120,7 +120,7 @@ Useful flags:
 | `--only <id>` | One agent only. Repeatable: `--only claude --only cursor`. |
 | `--dry-run` | Print every command. Write nothing. |
 | `--with-init` | Drop always-on rule files into the current repo (`.cursor/`, `.windsurf/`, `.clinerules/`, `.github/copilot-instructions.md`, `.opencode/AGENTS.md`, `AGENTS.md`) and, if OpenClaw is on the box, append the bootstrap block to `~/.openclaw/workspace/SOUL.md`. |
-| `--with-mcp-shrink="<upstream cmd>"` | Register `caveman-shrink` MCP proxy wrapping the given upstream MCP server. **Off by default.** A value is required — caveman-shrink is a proxy and exits immediately without one. Example: `--with-mcp-shrink="npx @modelcontextprotocol/server-filesystem /tmp"`. The value is split on whitespace; for paths-with-spaces, install via `node bin/install.js` from a clone or edit `~/.claude.json` after a stub install. |
+| `--with-mcp-shrink="<upstream cmd>"` | Register `sweet-shrink` MCP proxy wrapping the given upstream MCP server. **Off by default.** A value is required — sweet-shrink is a proxy and exits immediately without one. Example: `--with-mcp-shrink="npx @modelcontextprotocol/server-filesystem /tmp"`. The value is split on whitespace; for paths-with-spaces, install via `node bin/install.js` from a clone or edit `~/.claude.json` after a stub install. |
 | `--no-mcp-shrink` | Skip MCP-shrink registration. (Default.) |
 | `--with-hooks` / `--no-hooks` | Force-on or force-off the Claude Code hook installer. (Default: on.) |
 | `--skip-skills` | Don't run the npx-skills auto-detect fallback when nothing else matched. |
@@ -140,11 +140,11 @@ For agents without a hook system (Cursor, Windsurf, Cline, Copilot, and friends)
 node bin/install.js --with-init
 
 # Or pull the rule body straight in (manual)
-curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/src/rules/caveman-activate.md \
-  > .cursor/rules/caveman.mdc   # or .windsurf/rules/caveman.md, .clinerules/caveman.md, .github/copilot-instructions.md
+curl -fsSL https://raw.githubusercontent.com/HDomi/sweet-agent/main/src/rules/sweet-activate.md \
+  > .cursor/rules/sweet.mdc   # or .windsurf/rules/sweet.md, .clinerules/sweet.md, .github/copilot-instructions.md
 ```
 
-`--with-init` writes the rule into every supported per-agent location it can detect (`.cursor/rules/`, `.windsurf/rules/`, `.clinerules/`, `.github/copilot-instructions.md`, `.opencode/AGENTS.md`, `AGENTS.md`). It also installs the OpenClaw workspace bootstrap (skill folder + SOUL.md marker block) when `~/.openclaw/workspace/` exists. Single source: [`src/rules/caveman-activate.md`](src/rules/caveman-activate.md).
+`--with-init` writes the rule into every supported per-agent location it can detect (`.cursor/rules/`, `.windsurf/rules/`, `.clinerules/`, `.github/copilot-instructions.md`, `.opencode/AGENTS.md`, `AGENTS.md`). It also installs the OpenClaw workspace bootstrap (skill folder + SOUL.md marker block) when `~/.openclaw/workspace/` exists. Single source: [`src/rules/sweet-activate.md`](src/rules/sweet-activate.md).
 
 ## Verify
 
@@ -160,37 +160,37 @@ You should see ~30 rows. Detected agents are marked. Anything you wanted but isn
 
 **2. Talk to Claude Code.**
 
-Open Claude Code, type `/caveman`. Response should be terse fragments — "Got it. Caveman mode on." or similar. Try a real question: "What is closures in JS?" — answer should drop articles and read like grunts.
+Open Claude Code, type `/sweet`. Then ask a real question in Korean, e.g. "JS 클로저가 뭐야?". The answer should come back as short Korean 반말 with 조사 dropped — something like "함수가 만들어질 때 주변 스코프 변수 붙잡아두는 거야. 그 함수 밖에서도 그 변수 살아있어." Code, API names, and error strings must stay verbatim. If you get 존댓말 or full paragraphs, the skill did not load.
 
 **3. Check the flag file.**
 
 ```bash
-cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.caveman-active"
+cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.sweet-active"
 # expected output: full
 ```
 
 If it's missing or empty, the SessionStart hook didn't fire. See troubleshooting below.
 
-Statusline should show `[CAVEMAN]` (orange) at the bottom of Claude Code. After your first `/caveman-stats` run it appends a savings counter like `[CAVEMAN] ⛏ 12.4k`.
+Statusline should show `[SWEET]` (orange) at the bottom of Claude Code. After your first `/sweet-stats` run it appends a savings counter like `[SWEET] ⛏ 12.4k`.
 
 ## Uninstall
 
 ```bash
-npx -y github:JuliusBrussee/caveman -- --uninstall
+npx -y github:HDomi/sweet-agent -- --uninstall
 ```
 
 What it removes:
 
-- Caveman hook entries from `$CLAUDE_CONFIG_DIR/settings.json` (default `~/.claude/`; matched by the substring `caveman`).
-- Hook files in `$CLAUDE_CONFIG_DIR/hooks/` (`caveman-activate.js`, `caveman-mode-tracker.js`, `caveman-stats.js`, `caveman-config.js`, `caveman-statusline.{sh,ps1}`, plus the dir's `package.json` marker).
+- Sweet hook entries from `$CLAUDE_CONFIG_DIR/settings.json` (default `~/.claude/`; matched by the substring `sweet`).
+- Hook files in `$CLAUDE_CONFIG_DIR/hooks/` (`sweet-activate.js`, `sweet-mode-tracker.js`, `sweet-stats.js`, `sweet-config.js`, `sweet-statusline.{sh,ps1}`, plus the dir's `package.json` marker).
 - The Claude Code plugin and the Gemini CLI extension (if installed).
-- The opencode native plugin (`~/.config/opencode/plugins/caveman/`, the `plugin` and `mcp.caveman-shrink` entries from `opencode.json`, our skill/agent/command files, the caveman block from `AGENTS.md`, and the opencode flag file).
+- The opencode native plugin (`~/.config/opencode/plugins/sweet-agent/`, the `plugin` and `mcp.sweet-shrink` entries from `opencode.json`, our skill/agent/command files, the sweet block from `AGENTS.md`, and the opencode flag file).
 - The OpenClaw workspace skill folder and the marker-fenced block from `~/.openclaw/workspace/SOUL.md` (when present).
-- The `.caveman-active` flag file.
+- The `.sweet-active` flag file.
 
 What it does **not** remove:
 
-- Skills installed via `npx skills add` — the `skills` CLI manages those. Run `npx skills remove caveman` (or use your IDE's skill manager).
+- Skills installed via `npx skills add` — the `skills` CLI manages those. Run `npx skills remove sweet` (or use your IDE's skill manager).
 - Per-repo rule files written by `--with-init` (`.cursor/rules/`, `.windsurf/rules/`, `.clinerules/`, `.github/copilot-instructions.md`, `.opencode/AGENTS.md`, `AGENTS.md`). Delete by hand if you want.
 
 ## Troubleshooting
@@ -199,22 +199,22 @@ What it does **not** remove:
 
 Open your agent in this repo and say:
 
-> "Read CLAUDE.md and INSTALL.md. Install caveman for me."
+> "Read CLAUDE.md and INSTALL.md. Install sweet for me."
 
-Agent read repo. Agent run install. Caveman make agent talk less — agent first job is install caveman to talk less. Snake eat tail.
+Agent read repo. Agent run install. Sweet make agent talk less — agent first job is install sweet to talk less. Snake eat tail.
 
-Still broken? [Open an issue](https://github.com/JuliusBrussee/caveman/issues).
+Still broken? [Open an issue](https://github.com/HDomi/sweet-agent/issues).
 
-**"I ran the installer but Claude Code isn't talking caveman."**
+**"I ran the installer but Claude Code isn't talking sweet."**
 
 1. Run `node bin/install.js --list` — confirm `claude` is on the detected list. If not, `claude` isn't on `PATH`. Fix that first.
-2. Open `$CLAUDE_CONFIG_DIR/settings.json` (default `~/.claude/settings.json`) and look for `"hooks"` containing `caveman-activate.js` and `caveman-mode-tracker.js`. If missing, re-run with `--force`.
-3. Check `$CLAUDE_CONFIG_DIR/.caveman-active` exists with content `full`. If not, the SessionStart hook silent-failed — check `$CLAUDE_CONFIG_DIR/hooks/` for the JS files and try `node $CLAUDE_CONFIG_DIR/hooks/caveman-activate.js < /dev/null` to see if it errors.
+2. Open `$CLAUDE_CONFIG_DIR/settings.json` (default `~/.claude/settings.json`) and look for `"hooks"` containing `sweet-activate.js` and `sweet-mode-tracker.js`. If missing, re-run with `--force`.
+3. Check `$CLAUDE_CONFIG_DIR/.sweet-active` exists with content `full`. If not, the SessionStart hook silent-failed — check `$CLAUDE_CONFIG_DIR/hooks/` for the JS files and try `node $CLAUDE_CONFIG_DIR/hooks/sweet-activate.js < /dev/null` to see if it errors.
 4. Restart Claude Code. The SessionStart hook only fires on session start, not mid-session.
 
 **"Hooks failing on Windows."**
 
-- Use `install.ps1`, not `install.sh`. Git Bash works for the shell version, but the hook side wires PowerShell counterparts (`caveman-statusline.ps1`).
+- Use `install.ps1`, not `install.sh`. Git Bash works for the shell version, but the hook side wires PowerShell counterparts (`sweet-statusline.ps1`).
 - PowerShell 5.1 minimum. Check with `$PSVersionTable.PSVersion`.
 - If `irm | iex` blocks on execution policy: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` for the install session, then re-run.
 - Long-running issues: see `docs/install-windows.md` in the repo for manual fallback.
@@ -239,7 +239,7 @@ node bin/install.js --only cursor
 node bin/install.js --with-init --only cursor --only windsurf
 ```
 
-This drops `.cursor/rules/caveman.mdc` (and friends) into your repo. No hooks, no global config, nothing outside the repo.
+This drops `.cursor/rules/sweet.mdc` (and friends) into your repo. No hooks, no global config, nothing outside the repo.
 
 **"`npx skills add` errored on a profile slug."**
 
@@ -254,8 +254,8 @@ The installer doesn't phone home. It writes to:
 - Your current working directory (only with `--with-init`) — repo-local rule files.
 - `~/.openclaw/workspace/` (only with `--only openclaw` or `--with-init` when OpenClaw is detected) — the one `--with-init` side-effect outside the cwd.
 
-No telemetry. No analytics. Run from a clone or via npx, the installer's own code makes no network calls — files are copied locally. One exception: run detached from any checkout (the rare curl-fallback path), it downloads the hook files from raw.githubusercontent.com pinned to an immutable release tag and verifies each against a SHA-256 manifest before wiring anything. Network requests also happen indirectly through the per-agent CLIs it shells out to — `claude plugin marketplace add`, `claude plugin install`, `gemini extensions install`, `npm view caveman-shrink`, and `npx -y skills add`. Each fetches from its own registry (Anthropic / GitHub / npm). Source: [`bin/install.js`](bin/install.js). After install: zero network calls, ever — full statement in [SECURITY.md](./SECURITY.md#privacy--telemetry).
+No telemetry. No analytics. Run from a clone or via npx, the installer's own code makes no network calls — files are copied locally. One exception: run detached from any checkout (the rare curl-fallback path), it downloads the hook files from raw.githubusercontent.com pinned to an immutable release tag and verifies each against a SHA-256 manifest before wiring anything. Network requests also happen indirectly through the per-agent CLIs it shells out to — `claude plugin marketplace add`, `claude plugin install`, `gemini extensions install`, `npm view sweet-shrink`, and `npx -y skills add`. Each fetches from its own registry (Anthropic / GitHub / npm). Source: [`bin/install.js`](bin/install.js). After install: zero network calls, ever — full statement in [SECURITY.md](./SECURITY.md#privacy--telemetry).
 
 ---
 
-Stuck? Open an issue: <https://github.com/JuliusBrussee/caveman/issues>
+Stuck? Open an issue: <https://github.com/HDomi/sweet-agent/issues>

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// caveman — unified cross-platform installer.
+// sweet — unified cross-platform installer.
 //
 // One Node script replaces the old install.sh + install.ps1 + src/hooks/install.sh
 // + src/hooks/install.ps1 quartet. Single source of truth. Works on macOS, Linux,
@@ -8,7 +8,7 @@
 //
 // Distribution:
 //   Local clone: node bin/install.js [flags]
-//   curl|bash:   delegated from install.sh shim → npx -y github:JuliusBrussee/caveman -- [flags]
+//   curl|bash:   delegated from install.sh shim → npx -y github:HDomi/sweet-agent -- [flags]
 //   Windows:     pwsh install.ps1 [flags] → same npx delegation
 //
 // Pure stdlib, zero npm runtime deps.
@@ -26,30 +26,36 @@ const SETTINGS = require('./lib/settings');
 const OPENCLAW = require('./lib/openclaw');
 const { stripOpencodeAgentTools } = require('./lib/opencode-agent');
 
-const REPO = 'JuliusBrussee/caveman';
-// Pin remote fetches to an immutable release tag, not the moving `main`
-// branch (issue #261). A push to main must never silently change what a
-// curl|bash / detached-script install downloads and executes. Bump this to
-// the new tag on every release (CI release step) AFTER regenerating
-// src/hooks/checksums.sha256 so the integrity manifest matches the ref.
-// Overridable via CAVEMAN_REF for testing against a branch.
-const PINNED_REF = process.env.CAVEMAN_REF || 'v1.9.1';
+const REPO = 'HDomi/sweet-agent';
+// Remote fetches should be pinned to an immutable release tag, not the moving
+// `main` branch: a push to main must never silently change what a curl|bash /
+// detached-script install downloads and executes.
+//
+// TEMPORARILY 'main' — this fork has no release tags yet. Upstream's 'v1.9.1'
+// does not exist under HDomi/sweet-agent (raw.githubusercontent 404s on it),
+// which would break every download-path install. Downloaded hooks are still
+// integrity-checked, but against the manifest at the SAME ref, so what this
+// buys is "the files match each other", NOT "the files are frozen". Create the
+// first release tag, then set PINNED_REF to it and regenerate
+// src/hooks/checksums.sha256 so the manifest matches that ref.
+// Overridable via SWEET_REF for testing against a branch or tag.
+const PINNED_REF = process.env.SWEET_REF || 'main';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${PINNED_REF}`;
 const HOOKS_REMOTE = `${RAW_BASE}/src/hooks`;
-const INIT_SCRIPT_URL = `${RAW_BASE}/src/tools/caveman-init.js`;
-const MCP_SHRINK_PKG = 'caveman-shrink';
+const INIT_SCRIPT_URL = `${RAW_BASE}/src/tools/sweet-init.js`;
+const MCP_SHRINK_PKG = 'sweet-shrink';
 // Hook files to copy. Statusline ships in both .sh (macOS/Linux) and .ps1
 // (Windows) flavors — copy both regardless of host OS so a roaming
 // $CLAUDE_CONFIG_DIR (e.g. dotfiles repo) keeps working across platforms.
 const HOOK_FILES = [
   'package.json',
-  'caveman-config.js',
-  'caveman-activate.js',
-  'caveman-mode-tracker.js',
-  'caveman-stats.js',
-  'caveman-statusline.sh',
-  'caveman-statusline.ps1',
-  'cavecrew-model-overrides.js',
+  'sweet-config.js',
+  'sweet-activate.js',
+  'sweet-mode-tracker.js',
+  'sweet-stats.js',
+  'sweet-statusline.sh',
+  'sweet-statusline.ps1',
+  'sweetcrew-model-overrides.js',
 ];
 
 // ── Argv ───────────────────────────────────────────────────────────────────
@@ -65,7 +71,7 @@ function parseArgs(argv) {
     const a = argv[i];
     // --with-mcp-shrink=<upstream cmd>  (handled before the switch so the
     // GNU-style =value form is recognized). Bare --with-mcp-shrink falls
-    // through to the switch and is rejected — caveman-shrink is a proxy
+    // through to the switch and is rejected — sweet-shrink is a proxy
     // and a stub registration just lands the user in a broken-MCP loop (#474).
     if (a.startsWith('--with-mcp-shrink=')) {
       const raw = a.slice('--with-mcp-shrink='.length);
@@ -95,7 +101,7 @@ function parseArgs(argv) {
           }
           opts.withMcpShrink = tokens;
         } else {
-          die('error: --with-mcp-shrink requires an upstream command — caveman-shrink\n' +
+          die('error: --with-mcp-shrink requires an upstream command — sweet-shrink\n' +
               '  is a proxy and exits immediately without one. Pass the upstream:\n' +
               '  --with-mcp-shrink="npx @modelcontextprotocol/server-filesystem /path"');
         }
@@ -126,7 +132,7 @@ function parseArgs(argv) {
         break;
       }
       default:
-        die(`error: unknown flag: ${a}\nrun 'caveman --help' for usage`);
+        die(`error: unknown flag: ${a}\nrun 'sweet --help' for usage`);
     }
   }
   if (opts.all && opts.minimal) die('error: --all and --minimal are mutually exclusive');
@@ -134,7 +140,7 @@ function parseArgs(argv) {
   //   • withHooks — left at 'auto' so installClaude() can skip standalone
   //     settings.json wiring when the plugin manifest already wires the hooks
   //     (duplicate registration fires both per event — issue #392).
-  //   • withMcpShrink — caveman-shrink is a proxy that needs an upstream
+  //   • withMcpShrink — sweet-shrink is a proxy that needs an upstream
   //     command, so there's no sensible "everything on" default (issue #474).
   //     Opt in explicitly with --with-mcp-shrink="<upstream cmd>".
   if (opts.all) { opts.withInit = true; }
@@ -145,7 +151,7 @@ function parseArgs(argv) {
     const knownIds = new Set(PROVIDERS.map(p => p.id));
     for (const id of opts.only) {
       if (!knownIds.has(id)) {
-        die(`error: unknown agent: ${id}\n  see 'caveman --list' for valid ids`);
+        die(`error: unknown agent: ${id}\n  see 'sweet --list' for valid ids`);
       }
     }
   }
@@ -170,14 +176,14 @@ function checkWslWindowsNode() {
   // Windows-Node executing inside WSL has homedir like /mnt/c/Users/... which
   // breaks every config-dir resolution. Detect and abort with a clear hint.
   if (process.env.WSL_DISTRO_NAME) {
-    die('caveman: detected Windows Node.js running inside WSL.\n' +
+    die('sweet: detected Windows Node.js running inside WSL.\n' +
         '         Install Linux-native Node inside your WSL distro and re-run there.\n' +
         '         (WSL_DISTRO_NAME=' + process.env.WSL_DISTRO_NAME + ')');
   }
   try {
     const v = fs.readFileSync('/proc/version', 'utf8').toLowerCase();
     if (v.includes('microsoft') || v.includes('wsl')) {
-      die('caveman: detected Windows Node.js running inside WSL (/proc/version).\n' +
+      die('sweet: detected Windows Node.js running inside WSL (/proc/version).\n' +
           '         Install Linux-native Node inside your WSL distro and re-run there.');
     }
   } catch (_) { /* /proc/version absent on real Windows — fine */ }
@@ -185,7 +191,7 @@ function checkWslWindowsNode() {
 
 function checkNodeVersion() {
   const major = parseInt(process.versions.node.split('.')[0], 10);
-  if (major < 18) die(`caveman: Node ${process.versions.node} too old. Need Node ≥18. https://nodejs.org`);
+  if (major < 18) die(`sweet: Node ${process.versions.node} too old. Need Node ≥18. https://nodejs.org`);
 }
 
 // ── Provider matrix ────────────────────────────────────────────────────────
@@ -458,11 +464,11 @@ async function installClaude(ctx) {
   let alreadyInstalled = false;
   if (!opts.force) {
     const r = captureSpawn('claude', ['plugin', 'list']);
-    if (r.status === 0 && /caveman/i.test(r.stdout || '')) alreadyInstalled = true;
+    if (r.status === 0 && /sweet/i.test(r.stdout || '')) alreadyInstalled = true;
   }
   let pluginInstallSucceeded = false;
   if (alreadyInstalled) {
-    note('  caveman plugin already installed (use --force to reinstall)');
+    note('  sweet plugin already installed (use --force to reinstall)');
     results.skipped.push(['claude', 'plugin already installed']);
     pluginInstallSucceeded = true;
   } else {
@@ -470,7 +476,7 @@ async function installClaude(ctx) {
     // when Claude Code's plugin installer tries to rename across filesystems (#585).
     const pluginEnv = sameFilesystemTmpEnv(configDir);
     const r1 = runSpawn('claude', ['plugin', 'marketplace', 'add', REPO], { env: pluginEnv }, opts.dryRun);
-    const r2 = runSpawn('claude', ['plugin', 'install', 'caveman@caveman'], { env: pluginEnv }, opts.dryRun);
+    const r2 = runSpawn('claude', ['plugin', 'install', 'sweet@sweet'], { env: pluginEnv }, opts.dryRun);
     if (spawnOk(r1) && spawnOk(r2)) {
       results.installed.push('claude');
       pluginInstallSucceeded = true;
@@ -485,7 +491,7 @@ async function installClaude(ctx) {
   // Self-heal: drop managed settings.json hook/statusLine entries whose target
   // script no longer exists (issue #471). Migrating an old manual install to
   // the plugin leaves settings.json pointing at removed ~/.claude/hooks/
-  // caveman-*.js scripts, so Claude Code crashes every SessionStart /
+  // sweet-*.js scripts, so Claude Code crashes every SessionStart /
   // UserPromptSubmit with `loader:1478 — Cannot find module …`. Runs
   // unconditionally so it repairs an already-dirty config even when we then
   // skip standalone wiring because the plugin manifest handles hooks.
@@ -495,7 +501,7 @@ async function installClaude(ctx) {
     if (settings) {
       const pruned = SETTINGS.pruneOrphanedManagedHooks(settings, configDir);
       if (pruned > 0) {
-        note(`  removed ${pruned} orphaned caveman hook entr${pruned === 1 ? 'y' : 'ies'} from settings.json (target script missing)`);
+        note(`  removed ${pruned} orphaned sweet hook entr${pruned === 1 ? 'y' : 'ies'} from settings.json (target script missing)`);
         if (!opts.dryRun) {
           SETTINGS.validateHookFields(settings);
           SETTINGS.writeSettings(settingsPath, settings);
@@ -510,7 +516,7 @@ async function installClaude(ctx) {
   //   default / --all  → wire only if the plugin install did NOT succeed.
   // The plugin manifest already wires SessionStart + UserPromptSubmit when the
   // plugin install succeeds; wiring them again in settings.json fires both per
-  // event (two CAVEMAN MODE blocks, two reinforcement lines).
+  // event (two SWEET MODE blocks, two reinforcement lines).
   let shouldWireHooks;
   if (opts.withHooks === false) {
     shouldWireHooks = false;
@@ -541,11 +547,11 @@ async function installClaude(ctx) {
   }
 
   if (opts.withMcpShrink) {
-    say('  → wiring caveman-shrink MCP proxy (--with-mcp-shrink)');
+    say('  → wiring sweet-shrink MCP proxy (--with-mcp-shrink)');
     const r = installMcpShrink(ctx);
-    if (r.kind === 'ok')   results.installed.push('caveman-shrink');
-    if (r.kind === 'skip') results.skipped.push(['caveman-shrink', r.why]);
-    if (r.kind === 'fail') results.failed.push(['caveman-shrink', r.why]);
+    if (r.kind === 'ok')   results.installed.push('sweet-shrink');
+    if (r.kind === 'skip') results.skipped.push(['sweet-shrink', r.why]);
+    if (r.kind === 'fail') results.failed.push(['sweet-shrink', r.why]);
   }
 
   process.stdout.write('\n');
@@ -558,8 +564,8 @@ function installGemini(ctx) {
 
   if (!opts.force) {
     const r = captureSpawn('gemini', ['extensions', 'list']);
-    if (r.status === 0 && /caveman/i.test(r.stdout || '')) {
-      note('  caveman extension already installed (use --force to reinstall)');
+    if (r.status === 0 && /sweet/i.test(r.stdout || '')) {
+      note('  sweet extension already installed (use --force to reinstall)');
       results.skipped.push(['gemini', 'extension already installed']);
       process.stdout.write('\n');
       return;
@@ -593,8 +599,8 @@ function installViaSkills(ctx, prov) {
 }
 
 // ── hermes native install ──────────────────────────────────────────────────
-// Drops the caveman skills into ~/.hermes/skills/productivity/ (or HERMES_HOME if set).
-const HERMES_SKILL_DIRS = ['caveman', 'caveman-commit', 'caveman-review', 'caveman-help', 'caveman-stats', 'caveman-compress', 'cavecrew'];
+// Drops the sweet skills into ~/.hermes/skills/productivity/ (or HERMES_HOME if set).
+const HERMES_SKILL_DIRS = ['sweet', 'sweet-commit', 'sweet-review', 'sweet-help', 'sweet-stats', 'sweet-compress', 'sweetcrew'];
 
 function hermesConfigDir() {
   // Hermes uses ~/.hermes by default, or HERMES_HOME env var.
@@ -608,8 +614,8 @@ function installHermes(ctx) {
   say('→ Hermes Agent detected');
 
   if (!repoRoot) {
-    warn('  Hermes native install requires a local clone of the caveman repo.');
-    note('  Re-run from a clone: git clone https://github.com/' + REPO + ' && cd caveman && node bin/install.js --only hermes');
+    warn('  Hermes native install requires a local clone of the sweet repo.');
+    note('  Re-run from a clone: git clone https://github.com/' + REPO + ' && cd sweet && node bin/install.js --only hermes');
     results.failed.push(['hermes', 'native install requires local repo clone']);
     process.stdout.write('\n');
     return;
@@ -655,16 +661,16 @@ function installHermes(ctx) {
 // opencode.json with a "plugin" array entry. Mirrors the Claude Code hook
 // architecture as closely as opencode allows — only the statusline is missing
 // (opencode's TUI exposes no plugin-writable badge).
-const OPENCODE_SKILL_DIRS  = ['caveman', 'caveman-commit', 'caveman-review', 'caveman-help', 'caveman-stats', 'caveman-compress', 'cavecrew'];
-const OPENCODE_AGENT_FILES = ['cavecrew-investigator.md', 'cavecrew-builder.md', 'cavecrew-reviewer.md'];
-const OPENCODE_COMMAND_FILES = ['caveman.md', 'caveman-commit.md', 'caveman-review.md', 'caveman-compress.md', 'caveman-stats.md', 'caveman-help.md'];
-const OPENCODE_PLUGIN_REL = './plugins/caveman/plugin.js';
-const OPENCODE_AGENTS_MD_SENTINEL = 'Respond terse like smart caveman';
+const OPENCODE_SKILL_DIRS  = ['sweet', 'sweet-commit', 'sweet-review', 'sweet-help', 'sweet-stats', 'sweet-compress', 'sweetcrew'];
+const OPENCODE_AGENT_FILES = ['sweetcrew-investigator.md', 'sweetcrew-builder.md', 'sweetcrew-reviewer.md'];
+const OPENCODE_COMMAND_FILES = ['sweet.md', 'sweet-commit.md', 'sweet-review.md', 'sweet-compress.md', 'sweet-stats.md', 'sweet-help.md'];
+const OPENCODE_PLUGIN_REL = './plugins/sweet-agent/plugin.js';
+const OPENCODE_AGENTS_MD_SENTINEL = '오빠에게 짧고 다정한 반말로 답한다';
 // Marker fence for the opencode AGENTS.md ruleset block. Same convention as
 // bin/lib/openclaw.js for SOUL.md — lets us strip our block cleanly even when
 // the user has authored content above AND below it.
-const OPENCODE_AGENTS_MD_BEGIN = '<!-- caveman-begin -->';
-const OPENCODE_AGENTS_MD_END = '<!-- caveman-end -->';
+const OPENCODE_AGENTS_MD_BEGIN = '<!-- sweet-begin -->';
+const OPENCODE_AGENTS_MD_END = '<!-- sweet-end -->';
 
 function opencodeConfigDir() {
   // opencode uses ~/.config/opencode on every platform (on Windows that's
@@ -689,15 +695,15 @@ function installOpencode(ctx) {
   say('→ opencode detected');
 
   if (!repoRoot) {
-    warn('  opencode native install requires a local clone of the caveman repo.');
-    note('  Re-run from a clone: git clone https://github.com/' + REPO + ' && cd caveman && node bin/install.js --only opencode');
+    warn('  opencode native install requires a local clone of the sweet repo.');
+    note('  Re-run from a clone: git clone https://github.com/' + REPO + ' && cd sweet && node bin/install.js --only opencode');
     results.failed.push(['opencode', 'native install requires local repo clone']);
     process.stdout.write('\n');
     return;
   }
 
   const dir = opencodeConfigDir();
-  const pluginDir   = path.join(dir, 'plugins', 'caveman');
+  const pluginDir   = path.join(dir, 'plugins', 'sweet');
   const commandsDir = path.join(dir, 'commands');
   const agentsDir   = path.join(dir, 'agents');
   const skillsDir   = path.join(dir, 'skills');
@@ -706,11 +712,11 @@ function installOpencode(ctx) {
 
   if (opts.dryRun) {
     note(`  would mkdir ${pluginDir}/, ${commandsDir}/, ${agentsDir}/, ${skillsDir}/`);
-    note(`  would copy plugin.js + package.json + caveman-config.cjs into ${pluginDir}/`);
+    note(`  would copy plugin.js + package.json + sweet-config.cjs into ${pluginDir}/`);
     note(`  would copy ${OPENCODE_COMMAND_FILES.length} command files into ${commandsDir}/`);
-    note(`  would copy ${OPENCODE_AGENT_FILES.length} cavecrew agents into ${agentsDir}/`);
+    note(`  would copy ${OPENCODE_AGENT_FILES.length} sweetcrew agents into ${agentsDir}/`);
     note(`  would copy ${OPENCODE_SKILL_DIRS.length} skill dirs into ${skillsDir}/`);
-    note(`  would patch ${opencodeJson} with "plugin" entry${opts.withMcpShrink ? ' + caveman-shrink MCP' : ''}`);
+    note(`  would patch ${opencodeJson} with "plugin" entry${opts.withMcpShrink ? ' + sweet-shrink MCP' : ''}`);
     note(`  would write Tier-3 ruleset to ${agentsMd}`);
     results.installed.push('opencode');
     process.stdout.write('\n');
@@ -718,7 +724,7 @@ function installOpencode(ctx) {
   }
 
   try {
-    // 1. Plugin dir — copy plugin.js, package.json, caveman-config.js (sibling).
+    // 1. Plugin dir — copy plugin.js, package.json, sweet-config.js (sibling).
     //    Same `--force` semantic as commands/agents/skills below: re-runs leave
     //    user edits to plugin.js alone unless --force is passed.
     fs.mkdirSync(pluginDir, { recursive: true });
@@ -728,8 +734,8 @@ function installOpencode(ctx) {
       [path.join(pluginSrc, 'package.json'), path.join(pluginDir, 'package.json')],
       // Renamed to .cjs because the plugin dir is "type": "module" — a bare .js
       // sibling would be loaded as ESM and break the plugin's require() bridge.
-      [path.join(repoRoot, 'src', 'hooks', 'caveman-config.js'),
-       path.join(pluginDir, 'caveman-config.cjs')],
+      [path.join(repoRoot, 'src', 'hooks', 'sweet-config.js'),
+       path.join(pluginDir, 'sweet-config.cjs')],
     ];
     for (const [src, dest] of pluginPayload) {
       if (fs.existsSync(dest) && !opts.force) {
@@ -784,7 +790,7 @@ function installOpencode(ctx) {
     //    a later --uninstall can strip our block cleanly even if the user has
     //    authored content above AND below it. Idempotency check uses the begin
     //    marker (the legacy sentinel still matches old installs).
-    const ruleBody = fs.readFileSync(path.join(repoRoot, 'src', 'rules', 'caveman-activate.md'), 'utf8').trimEnd() + '\n';
+    const ruleBody = fs.readFileSync(path.join(repoRoot, 'src', 'rules', 'sweet-activate.md'), 'utf8').trimEnd() + '\n';
     const fencedBlock = `${OPENCODE_AGENTS_MD_BEGIN}\n${ruleBody}${OPENCODE_AGENTS_MD_END}\n`;
     if (fs.existsSync(agentsMd)) {
       const existing = fs.readFileSync(agentsMd, 'utf8');
@@ -792,10 +798,10 @@ function installOpencode(ctx) {
         && existing.includes(OPENCODE_AGENTS_MD_END);
       const alreadyByLegacySentinel = !alreadyFenced && existing.includes(OPENCODE_AGENTS_MD_SENTINEL);
       if (alreadyFenced) {
-        note(`  ${agentsMd} already contains caveman ruleset`);
+        note(`  ${agentsMd} already contains sweet ruleset`);
       } else if (alreadyByLegacySentinel) {
         if (!opts.force) {
-          note(`  ${agentsMd} contains a legacy (un-fenced) caveman block — leaving as-is`);
+          note(`  ${agentsMd} contains a legacy (un-fenced) sweet block — leaving as-is`);
           note('  re-run with --force to migrate it to a fenced block');
         }
         if (opts.force) {
@@ -828,14 +834,14 @@ function installOpencode(ctx) {
       } else {
         const sep = existing.endsWith('\n\n') ? '' : (existing.endsWith('\n') ? '\n' : '\n\n');
         fs.writeFileSync(agentsMd, existing + sep + fencedBlock, { mode: 0o644 });
-        process.stdout.write(`  appended caveman ruleset to ${agentsMd}\n`);
+        process.stdout.write(`  appended sweet ruleset to ${agentsMd}\n`);
       }
     } else {
       fs.writeFileSync(agentsMd, fencedBlock, { mode: 0o644 });
       process.stdout.write(`  installed: ${agentsMd}\n`);
     }
 
-    // 6. opencode.json — add plugin entry; optional caveman-shrink MCP.
+    // 6. opencode.json — add plugin entry; optional sweet-shrink MCP.
     let cfg = SETTINGS.readSettings(opencodeJson);
     if (cfg === null) {
       warn(`  ${opencodeJson} unparseable; will not touch it. Edit manually then re-run.`);
@@ -855,16 +861,27 @@ function installOpencode(ctx) {
     }
     if (opts.withMcpShrink) {
       // opts.withMcpShrink is the array of upstream-cmd tokens parseArgs
-      // produced. caveman-shrink is a proxy — it crashes without an upstream,
+      // produced. sweet-shrink is a proxy — it crashes without an upstream,
       // so we always wire one through.
-      if (!cfg.mcp || typeof cfg.mcp !== 'object') cfg.mcp = {};
-      if (!cfg.mcp['caveman-shrink']) {
-        cfg.mcp['caveman-shrink'] = {
-          type: 'local',
-          command: ['npx', '-y', MCP_SHRINK_PKG, ...opts.withMcpShrink],
-          enabled: true,
-        };
-        process.stdout.write(`  registered caveman-shrink MCP server (wraps: ${opts.withMcpShrink.join(' ')})\n`);
+      //
+      // Point at the local copy, never `npx -y sweet-shrink`: that name is not
+      // published and not owned by this project, so resolving it would run
+      // whoever claims it as an MCP proxy in front of a real server.
+      const shrinkEntry = repoRoot
+        ? path.join(repoRoot, 'src', 'mcp-servers', 'sweet-shrink', 'index.js')
+        : null;
+      if (!shrinkEntry || !fs.existsSync(shrinkEntry)) {
+        process.stdout.write('  skipped sweet-shrink: no local copy found (run from a repo clone)\n');
+      } else {
+        if (!cfg.mcp || typeof cfg.mcp !== 'object') cfg.mcp = {};
+        if (!cfg.mcp['sweet-shrink']) {
+          cfg.mcp['sweet-shrink'] = {
+            type: 'local',
+            command: [absoluteNodePath(), shrinkEntry, ...opts.withMcpShrink],
+            enabled: true,
+          };
+          process.stdout.write(`  registered sweet-shrink MCP server (wraps: ${opts.withMcpShrink.join(' ')})\n`);
+        }
       }
     }
     SETTINGS.writeSettings(opencodeJson, cfg);
@@ -879,10 +896,10 @@ function installOpencode(ctx) {
 }
 
 // ── OpenClaw native install ───────────────────────────────────────────────
-// Drops skills/caveman/ into the OpenClaw workspace and appends a small
+// Drops skills/sweet/ into the OpenClaw workspace and appends a small
 // auto-injected bootstrap block to the workspace SOUL.md. Always-on behavior
 // comes from SOUL.md (auto-injected each turn); the skill folder makes
-// caveman discoverable via `openclaw skills list`. See bin/lib/openclaw.js
+// sweet discoverable via `openclaw skills list`. See bin/lib/openclaw.js
 // for the actual file writes.
 function installOpenclaw(ctx) {
   const { say, note, warn, opts, repoRoot, results } = ctx;
@@ -958,7 +975,7 @@ async function installHooks(ctx) {
   }
 
   // chmod statusline (no-op on Windows)
-  try { fs.chmodSync(path.join(hooksDir, 'caveman-statusline.sh'), 0o755); } catch (_) {}
+  try { fs.chmodSync(path.join(hooksDir, 'sweet-statusline.sh'), 0o755); } catch (_) {}
 
   // Merge into settings.json
   let settings = SETTINGS.readSettings(settingsPath);
@@ -975,25 +992,25 @@ async function installHooks(ctx) {
   }
 
   const node = absoluteNodePath();
-  const activate = path.join(hooksDir, 'caveman-activate.js');
-  const tracker  = path.join(hooksDir, 'caveman-mode-tracker.js');
-  const statusline = path.join(hooksDir, 'caveman-statusline.sh');
+  const activate = path.join(hooksDir, 'sweet-activate.js');
+  const tracker  = path.join(hooksDir, 'sweet-mode-tracker.js');
+  const statusline = path.join(hooksDir, 'sweet-statusline.sh');
 
   // Migrate any legacy bare-`node` invocations of our managed scripts.
   SETTINGS.rewriteLegacyManagedHookCommands(settings, node);
 
   SETTINGS.addCommandHook(settings, 'SessionStart', {
     command: `"${node}" "${activate}"`,
-    marker: 'caveman-activate',
+    marker: 'sweet-activate',
     timeout: 5,
-    statusMessage: 'Loading caveman mode...',
+    statusMessage: 'Loading sweet mode...',
   });
 
   SETTINGS.addCommandHook(settings, 'UserPromptSubmit', {
     command: `"${node}" "${tracker}"`,
-    marker: 'caveman-mode-tracker',
+    marker: 'sweet-mode-tracker',
     timeout: 5,
-    statusMessage: 'Tracking caveman mode...',
+    statusMessage: 'Tracking sweet mode...',
   });
 
   // Statusline — set if absent or already pointing at our script.
@@ -1002,7 +1019,7 @@ async function installHooks(ctx) {
   // Use -ExecutionPolicy Bypass so users without RemoteSigned policy can run.
   const psHost = IS_WIN && hasCmd('pwsh') ? 'pwsh' : (IS_WIN ? 'powershell' : null);
   const slCmd = IS_WIN
-    ? `${psHost} -NoProfile -ExecutionPolicy Bypass -File "${path.join(hooksDir, 'caveman-statusline.ps1')}"`
+    ? `${psHost} -NoProfile -ExecutionPolicy Bypass -File "${path.join(hooksDir, 'sweet-statusline.ps1')}"`
     : `bash "${statusline}"`;
   if (!settings.statusLine) {
     settings.statusLine = { type: 'command', command: slCmd };
@@ -1011,10 +1028,10 @@ async function installHooks(ctx) {
     const existing = typeof settings.statusLine === 'string'
       ? settings.statusLine
       : (settings.statusLine.command || '');
-    if (existing.includes(statusline) || existing.includes('caveman-statusline')) {
+    if (existing.includes(statusline) || existing.includes('sweet-statusline')) {
       process.stdout.write('  statusline badge already configured.\n');
     } else {
-      process.stdout.write('  NOTE: existing statusline detected — caveman badge NOT added.\n');
+      process.stdout.write('  NOTE: existing statusline detected — sweet badge NOT added.\n');
       process.stdout.write('        See src/hooks/README.md to add the badge to your existing statusline.\n');
     }
   }
@@ -1029,14 +1046,23 @@ async function installHooks(ctx) {
 
 // ── MCP shrink wiring ─────────────────────────────────────────────────────
 function installMcpShrink(ctx) {
-  const { note, warn, opts } = ctx;
-  // Probe npm first — registry outage = clean skip with manual snippet.
-  const probe = captureSpawn('npm', ['view', MCP_SHRINK_PKG, 'name']);
-  if (probe.status !== 0) {
-    warn(`    'npm view ${MCP_SHRINK_PKG}' returned no metadata — registry unreachable or package missing.`);
-    note('    Skipping registration. Re-run --with-mcp-shrink when the registry is reachable.');
-    return { kind: 'skip', why: 'npm registry probe failed' };
+  const { note, warn, opts, repoRoot } = ctx;
+
+  // sweet-shrink is NOT published to npm. Wiring `npx -y sweet-shrink` would
+  // resolve an npm name this project does not own — if anyone ever publishes
+  // it, every install would silently execute their code as an MCP proxy in
+  // front of a real server. So we only ever run the copy on disk.
+  const localEntry = repoRoot
+    ? path.join(repoRoot, 'src', 'mcp-servers', 'sweet-shrink', 'index.js')
+    : null;
+  if (!localEntry || !fs.existsSync(localEntry)) {
+    warn(`    ${MCP_SHRINK_PKG} is not published to npm and no local copy was found.`);
+    note('    Run --with-mcp-shrink from a repo clone, or point your MCP config at');
+    note('    src/mcp-servers/sweet-shrink/index.js manually. Refusing to resolve an');
+    note('    unowned npm name (would run third-party code as an MCP proxy).');
+    return { kind: 'skip', why: 'no local sweet-shrink; npm name is unowned' };
   }
+
   // Detect modern `claude mcp add`
   const help = captureSpawn('claude', ['mcp', '--help']);
   if (help.status !== 0) {
@@ -1046,19 +1072,19 @@ function installMcpShrink(ctx) {
   }
   // opts.withMcpShrink is always an array of upstream-cmd tokens by the
   // time we get here; parseArgs rejects bare --with-mcp-shrink. The proxy
-  // gets `npx -y caveman-shrink <upstream tokens...>` so it has something
+  // gets `node <local index.js> <upstream tokens...>` so it has something
   // to wrap.
   const upstream = opts.withMcpShrink;
   const r = runSpawn(
     'claude',
-    ['mcp', 'add', 'caveman-shrink', '--', 'npx', '-y', MCP_SHRINK_PKG, ...upstream],
+    ['mcp', 'add', 'sweet-shrink', '--', absoluteNodePath(), localEntry, ...upstream],
     null, opts.dryRun
   );
   if (spawnOk(r)) {
     note(`    registered, wrapping: ${upstream.join(' ')}`);
-    note(`    Edit ~/.claude.json mcpServers["caveman-shrink"] to change the upstream,`);
-    note('    or `claude mcp remove caveman-shrink` to drop it.');
-    note(`    Docs: https://github.com/${REPO}/tree/main/src/mcp-servers/caveman-shrink`);
+    note(`    Edit ~/.claude.json mcpServers["sweet-shrink"] to change the upstream,`);
+    note('    or `claude mcp remove sweet-shrink` to drop it.');
+    note(`    Docs: https://github.com/${REPO}/tree/main/src/mcp-servers/sweet-shrink`);
     return { kind: 'ok' };
   }
   return { kind: 'fail', why: 'claude mcp add failed' };
@@ -1067,7 +1093,7 @@ function installMcpShrink(ctx) {
 // ── Init writers (per-repo rule files) ────────────────────────────────────
 async function runInit(ctx) {
   const { note, warn, opts, repoRoot } = ctx;
-  const local = repoRoot && path.join(repoRoot, 'src/tools/caveman-init.js');
+  const local = repoRoot && path.join(repoRoot, 'src/tools/sweet-init.js');
   const args = [process.cwd()];
   if (opts.dryRun) args.push('--dry-run');
   if (opts.force)  args.push('--force');
@@ -1081,7 +1107,7 @@ async function runInit(ctx) {
     return true;
   }
   try {
-    const tmp = path.join(os.tmpdir(), `caveman-init-${process.pid}.js`);
+    const tmp = path.join(os.tmpdir(), `sweet-init-${process.pid}.js`);
     await downloadTo(INIT_SCRIPT_URL, tmp);
     const r = child_process.spawnSync(absoluteNodePath(), [tmp, ...args], { stdio: 'inherit' });
     try { fs.unlinkSync(tmp); } catch (_) {}
@@ -1130,7 +1156,7 @@ function sha256File(p) {
 // the standard `sha256sum` text format: "<64-hex>  <path>" (two spaces, or
 // " *<path>" binary marker).
 async function loadRemoteHookChecksums() {
-  const tmp = path.join(os.tmpdir(), `caveman-checksums-${process.pid}-${Date.now()}.sha256`);
+  const tmp = path.join(os.tmpdir(), `sweet-checksums-${process.pid}-${Date.now()}.sha256`);
   try {
     await downloadTo(`${HOOKS_REMOTE}/checksums.sha256`, tmp);
     const txt = fs.readFileSync(tmp, 'utf8');
@@ -1150,7 +1176,7 @@ async function loadRemoteHookChecksums() {
 // ── Uninstall ─────────────────────────────────────────────────────────────
 function uninstall(ctx) {
   const { say, note, warn, ok, opts, configDir } = ctx;
-  say('🪨 caveman uninstall');
+  say('🪨 sweet uninstall');
 
   if (opts.dryRun) note('  (dry run — nothing will be removed)');
 
@@ -1160,15 +1186,15 @@ function uninstall(ctx) {
   if (fs.existsSync(settingsPath)) {
     const settings = SETTINGS.readSettings(settingsPath);
     if (settings) {
-      const removed = SETTINGS.removeCavemanHooks(settings);
+      const removed = SETTINGS.removeSweetHooks(settings);
       // Drop our statusline if it points at our script
       if (settings.statusLine) {
         const cmd = typeof settings.statusLine === 'string' ? settings.statusLine : (settings.statusLine.command || '');
-        if (cmd.includes('caveman-statusline')) delete settings.statusLine;
+        if (cmd.includes('sweet-statusline')) delete settings.statusLine;
       }
       SETTINGS.validateHookFields(settings);
       if (!opts.dryRun) SETTINGS.writeSettings(settingsPath, settings);
-      ok(`  removed ${removed} caveman hook entr${removed === 1 ? 'y' : 'ies'} from settings.json`);
+      ok(`  removed ${removed} sweet hook entr${removed === 1 ? 'y' : 'ies'} from settings.json`);
     }
   }
 
@@ -1183,30 +1209,30 @@ function uninstall(ctx) {
   }
 
   // Plugin uninstall on Claude. Probe `plugin list` first so a re-run on a
-  // machine where caveman was never installed (or was already removed) doesn't
+  // machine where sweet was never installed (or was already removed) doesn't
   // print "Plugin not installed" stderr noise.
   if (hasCmd('claude')) {
     const probe = captureSpawn('claude', ['plugin', 'list']);
-    if (probe.status === 0 && /caveman/i.test(probe.stdout || '')) {
-      const r = runSpawn('claude', ['plugin', 'uninstall', 'caveman@caveman'], null, opts.dryRun);
+    if (probe.status === 0 && /sweet/i.test(probe.stdout || '')) {
+      const r = runSpawn('claude', ['plugin', 'uninstall', 'sweet@sweet'], null, opts.dryRun);
       if (spawnOk(r)) ok('  removed claude plugin');
     } else {
       note('  claude plugin not installed — skipping');
     }
 
-    // caveman-shrink MCP — only run if `claude mcp` subcommand exists. Tolerate
+    // sweet-shrink MCP — only run if `claude mcp` subcommand exists. Tolerate
     // non-zero exit (server may have never been registered).
     const mcpHelp = captureSpawn('claude', ['mcp', '--help']);
     if (mcpHelp.status === 0) {
-      runSpawn('claude', ['mcp', 'remove', 'caveman-shrink'], null, opts.dryRun);
+      runSpawn('claude', ['mcp', 'remove', 'sweet-shrink'], null, opts.dryRun);
     }
   }
 
   // Gemini extension. Same idempotency probe as claude.
   if (hasCmd('gemini')) {
     const probe = captureSpawn('gemini', ['extensions', 'list']);
-    if (probe.status === 0 && /caveman/i.test(probe.stdout || '')) {
-      runSpawn('gemini', ['extensions', 'uninstall', 'caveman'], null, opts.dryRun);
+    if (probe.status === 0 && /sweet/i.test(probe.stdout || '')) {
+      runSpawn('gemini', ['extensions', 'uninstall', 'sweet'], null, opts.dryRun);
     } else {
       note('  gemini extension not installed — skipping');
     }
@@ -1215,7 +1241,7 @@ function uninstall(ctx) {
   // opencode native install — strip plugin entry, MCP entry, and our files.
   // Probed by the existence of the plugin dir we own; if absent, skip silently.
   const ocDir = opencodeConfigDir();
-  const ocPluginDir = path.join(ocDir, 'plugins', 'caveman');
+  const ocPluginDir = path.join(ocDir, 'plugins', 'sweet');
   if (fs.existsSync(ocPluginDir)) {
     const ocJson = path.join(ocDir, 'opencode.json');
     if (fs.existsSync(ocJson)) {
@@ -1225,12 +1251,12 @@ function uninstall(ctx) {
           cfg.plugin = cfg.plugin.filter(p => p !== OPENCODE_PLUGIN_REL);
           if (cfg.plugin.length === 0) delete cfg.plugin;
         }
-        if (cfg.mcp && typeof cfg.mcp === 'object' && cfg.mcp['caveman-shrink']) {
-          delete cfg.mcp['caveman-shrink'];
+        if (cfg.mcp && typeof cfg.mcp === 'object' && cfg.mcp['sweet-shrink']) {
+          delete cfg.mcp['sweet-shrink'];
           if (Object.keys(cfg.mcp).length === 0) delete cfg.mcp;
         }
         if (!opts.dryRun) SETTINGS.writeSettings(ocJson, cfg);
-        ok(`  pruned caveman entries from ${ocJson}`);
+        ok(`  pruned sweet entries from ${ocJson}`);
       }
     }
     if (!opts.dryRun) { try { fs.rmSync(ocPluginDir, { recursive: true, force: true }); } catch (_) {} }
@@ -1249,7 +1275,7 @@ function uninstall(ctx) {
       const p = path.join(ocDir, 'skills', name);
       if (fs.existsSync(p) && !opts.dryRun) { try { fs.rmSync(p, { recursive: true, force: true }); } catch (_) {} }
     }
-    // AGENTS.md — strip the fenced caveman block (preserves user content
+    // AGENTS.md — strip the fenced sweet block (preserves user content
     // above and below). If the file is empty after the strip, remove it.
     // Falls back to legacy unfenced-sentinel handling for installs that
     // pre-date the marker fence.
@@ -1270,33 +1296,33 @@ function uninstall(ctx) {
             fs.writeFileSync(ocAgentsMd, next, { mode: 0o644 });
           }
         }
-        note(next === '' ? `  removed ${ocAgentsMd}` : `  stripped caveman block from ${ocAgentsMd}`);
+        note(next === '' ? `  removed ${ocAgentsMd}` : `  stripped sweet block from ${ocAgentsMd}`);
       } else if (body.includes(OPENCODE_AGENTS_MD_SENTINEL)) {
         // Legacy install (no marker fence). Remove only if the file is ours.
         if (body.trim() === '' || body.trim().startsWith(OPENCODE_AGENTS_MD_SENTINEL)) {
           if (!opts.dryRun) { try { fs.unlinkSync(ocAgentsMd); } catch (_) {} }
           note(`  removed ${ocAgentsMd}`);
         } else {
-          note(`  left ${ocAgentsMd} in place (legacy mixed content — strip caveman block manually)`);
+          note(`  left ${ocAgentsMd} in place (legacy mixed content — strip sweet block manually)`);
         }
       }
     }
     // opencode flag file
-    const ocFlag = path.join(ocDir, '.caveman-active');
+    const ocFlag = path.join(ocDir, '.sweet-active');
     if (fs.existsSync(ocFlag) && !opts.dryRun) { try { fs.unlinkSync(ocFlag); } catch (_) {} }
   }
 
   // OpenClaw native install — strip skill folder + SOUL.md marker block.
   // Probed by the skill folder we own; if absent, skip silently.
   const ocwWs = process.env.OPENCLAW_WORKSPACE || path.join(os.homedir(), '.openclaw', 'workspace');
-  if (fs.existsSync(path.join(ocwWs, 'skills', 'caveman')) || fs.existsSync(path.join(ocwWs, 'SOUL.md'))) {
+  if (fs.existsSync(path.join(ocwWs, 'skills', 'sweet')) || fs.existsSync(path.join(ocwWs, 'SOUL.md'))) {
     const log = {
       write: (s) => process.stdout.write(s),
       note: (s) => note(s),
       warn: (s) => warn(s),
     };
     const r = OPENCLAW.uninstallOpenclaw({ workspace: ocwWs, dryRun: opts.dryRun, log });
-    if (r.touched) ok('  pruned caveman entries from OpenClaw workspace');
+    if (r.touched) ok('  pruned sweet entries from OpenClaw workspace');
   }
 
   // Hermes native install — remove the skill folders installHermes copied.
@@ -1312,11 +1338,11 @@ function uninstall(ctx) {
         prunedHermes = true;
       }
     }
-    if (prunedHermes) ok('  pruned caveman skills from Hermes');
+    if (prunedHermes) ok('  pruned sweet skills from Hermes');
   }
 
   // Flag file
-  const flag = path.join(configDir, '.caveman-active');
+  const flag = path.join(configDir, '.sweet-active');
   if (fs.existsSync(flag) && !opts.dryRun) { try { fs.unlinkSync(flag); } catch (_) {} }
 
   process.stdout.write('\n');
@@ -1346,7 +1372,7 @@ async function promptForOnly(detected) {
 // ── --list ─────────────────────────────────────────────────────────────────
 function printList(noColor) {
   const c = makeChalk(noColor);
-  process.stdout.write(c.orange('🪨 caveman provider matrix') + '\n\n');
+  process.stdout.write(c.orange('🪨 sweet provider matrix') + '\n\n');
   process.stdout.write(`  ${pad('ID', 13)} ${pad('AGENT', 22)} INSTALL MECHANISM\n`);
   process.stdout.write(`  ${pad('--', 13)} ${pad('-----', 22)} -----------------\n`);
   for (const p of PROVIDERS) {
@@ -1363,10 +1389,10 @@ function pad(s, n) { s = String(s); return s + ' '.repeat(Math.max(0, n - s.leng
 
 // ── Help ───────────────────────────────────────────────────────────────────
 function printHelp() {
-  process.stdout.write(`caveman installer — detects your agents and installs caveman for each one.
+  process.stdout.write(`sweet installer — detects your agents and installs sweet for each one.
 
 USAGE
-  npx -y github:JuliusBrussee/caveman -- [flags]
+  npx -y github:HDomi/sweet-agent -- [flags]
   node bin/install.js [flags]
   bash install.sh [flags]              # shim → npx
   pwsh install.ps1 [flags]             # shim → npx
@@ -1385,13 +1411,13 @@ FLAGS
   --no-hooks            Skip the hooks installer.
   --with-init           Write per-repo IDE rule files into \$PWD.
   --with-mcp-shrink="<upstream cmd>"
-                        Claude Code (and opencode): register caveman-shrink MCP
+                        Claude Code (and opencode): register sweet-shrink MCP
                         proxy wrapping the given upstream. Default OFF.
-                        caveman-shrink crashes without an upstream, so a value
+                        sweet-shrink crashes without an upstream, so a value
                         is required. The value is whitespace-tokenized.
                         Example: --with-mcp-shrink="npx @modelcontextprotocol/server-filesystem /tmp"
   --no-mcp-shrink       Skip MCP shrink. (Default.)
-  --uninstall, -u       Remove caveman from this machine.
+  --uninstall, -u       Remove sweet from this machine.
   --config-dir <path>   Claude Code config dir for hook files + settings.json.
                         Default: \$CLAUDE_CONFIG_DIR or ~/.claude. Does NOT
                         scope \`claude plugin install\`, \`gemini extensions
@@ -1403,10 +1429,10 @@ FLAGS
   -h, --help            Show this help.
 
 EXAMPLES
-  npx -y github:JuliusBrussee/caveman                        # default install
-  npx -y github:JuliusBrussee/caveman -- --all               # all the trimmings
-  npx -y github:JuliusBrussee/caveman -- --only claude --no-mcp-shrink
-  npx -y github:JuliusBrussee/caveman -- --uninstall
+  npx -y github:HDomi/sweet-agent                        # default install
+  npx -y github:HDomi/sweet-agent -- --all               # all the trimmings
+  npx -y github:HDomi/sweet-agent -- --only claude --no-mcp-shrink
+  npx -y github:HDomi/sweet-agent -- --uninstall
 
   Issues: https://github.com/${REPO}/issues
 `);
@@ -1436,7 +1462,7 @@ async function main() {
 
   if (opts.uninstall) { uninstall(ctx); return 0; }
 
-  ctx.say('🪨 caveman installer');
+  ctx.say('🪨 sweet installer');
   ctx.note(`  ${REPO}`);
   if (opts.dryRun) ctx.note('  (dry run — nothing will be written)');
   process.stdout.write('\n');
@@ -1488,8 +1514,8 @@ async function main() {
   // Per-repo init
   if (opts.withInit) {
     ctx.say(`→ writing per-repo IDE rule files into ${process.cwd()} (--with-init)`);
-    if (await runInit(ctx)) ctx.results.installed.push(`caveman-init (${process.cwd()})`);
-    else                    ctx.results.failed.push(['caveman-init', 'src/tools/caveman-init.js failed']);
+    if (await runInit(ctx)) ctx.results.installed.push(`sweet-init (${process.cwd()})`);
+    else                    ctx.results.failed.push(['sweet-init', 'src/tools/sweet-init.js failed']);
     process.stdout.write('\n');
   } else if (ctx.results.installed.length || ctx.results.skipped.length) {
     ctx.note('  tip: re-run inside a repo with --all (or --with-init) to also write per-repo');
@@ -1516,9 +1542,8 @@ async function main() {
     process.stdout.write('  or pass --only <agent> to force a specific target.\n');
   }
   process.stdout.write('\n');
-  ctx.note("  start any session and say 'caveman mode', or run /caveman in Claude Code");
-  ctx.note('  measure what caveman save you: run /caveman-stats (numbers are estimates)');
-  ctx.note('  verified team savings coming soon — join waitlist: https://caveman.so');
+  ctx.note("  start any session and say 'sweet mode', or run /sweet in Claude Code");
+  ctx.note('  measure what sweet save you: run /sweet-stats (numbers are estimates)');
   ctx.note(`  uninstall: npx -y github:${REPO} -- --uninstall`);
 
   // Exit code: nonzero only if every detected agent failed

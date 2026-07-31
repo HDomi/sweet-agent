@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests for the stdin 'error' handler in caveman-mode-tracker.js.
+// Tests for the stdin 'error' handler in sweet-mode-tracker.js.
 // Covers issue #538: an abnormal stdin close (broken pipe, parent crash) emits
 // an 'error' event on process.stdin; without a listener Node throws it as an
 // uncaught exception and the hook exits non-zero — a spurious hook failure.
@@ -12,7 +12,7 @@ const fs = require('fs');
 const assert = require('assert');
 const { spawnSync } = require('child_process');
 
-const HOOK_PATH = path.resolve(__dirname, '..', 'src', 'hooks', 'caveman-mode-tracker.js');
+const HOOK_PATH = path.resolve(__dirname, '..', 'src', 'hooks', 'sweet-mode-tracker.js');
 const CLEAN_EXIT = 0;
 
 let passed = 0;
@@ -30,7 +30,7 @@ function test(name, fn) {
   }
 }
 
-console.log('caveman-mode-tracker stdin error handling\n');
+console.log('sweet-mode-tracker stdin error handling\n');
 
 // Load the REAL hook in a child, then emit an 'error' on process.stdin to
 // simulate an abnormal close. stdin is left open (never closed) so the only
@@ -62,7 +62,7 @@ test('stdin "error" event does not crash the hook (exit 0)', () => {
 // Regression guard: the new listener must not disturb the normal path — a valid
 // prompt piped on stdin, then a clean EOF, still exits 0.
 test('normal stdin (valid JSON + clean EOF) still exits 0', () => {
-  const tmpConfig = fs.mkdtempSync(path.join(os.tmpdir(), 'caveman-tracker-stdin-'));
+  const tmpConfig = fs.mkdtempSync(path.join(os.tmpdir(), 'sweet-tracker-stdin-'));
   try {
     const res = spawnSync(process.execPath, [HOOK_PATH], {
       input: JSON.stringify({ prompt: 'hello there' }),

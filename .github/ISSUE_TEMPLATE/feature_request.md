@@ -1,17 +1,17 @@
 ---
-name: Feature request
-about: Make caveman better
+name: 기능 제안
+about: 스윗을 더 좋게
 labels: enhancement
 ---
 
-**What you want**
-<!-- New behavior, new persona, new rule -->
+**원하는 것**
+<!-- 새 동작, 새 말투, 새 규칙 -->
 
-**Before/after example**
+**Before/After 예시**
 ```
-Before: [current behavior]
-After:  [desired behavior]
+지금: [현재 동작]
+바뀜: [원하는 동작]
 ```
 
-**Why good**
-<!-- Why this help users -->
+**왜 좋은가**
+<!-- 사용자에게 어떤 도움이 되는지 -->
