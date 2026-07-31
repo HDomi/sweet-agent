@@ -36,7 +36,7 @@ Parallel scout: spawn 2-3 `sweetcrew-investigator` calls in one message with dif
 
 ## Model overrides
 
-By default, `sweetcrew-reviewer` and `sweetcrew-investigator` pin `model: haiku` in their frontmatter; `sweetcrew-builder` has no `model:` line (uses the API session default). Set env vars in your shell before launching Claude Code to override per-agent:
+By default only `sweetcrew-investigator` pins `model: haiku` — locating a symbol is mechanical and the output contract is strict. `sweetcrew-reviewer` and `sweetcrew-builder` have no `model:` line and inherit the session model: finding bugs and editing code are judgement work, and pinning them to a small model would trade review quality for tokens the compressed output format already saves. Set env vars in your shell before launching Claude Code to override per-agent:
 
 | Env var | Agent |
 |---|---|

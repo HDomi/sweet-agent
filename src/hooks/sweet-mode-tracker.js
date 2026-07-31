@@ -31,6 +31,18 @@ process.stdin.on('end', () => {
     // every regex below sees a single-line prompt (#598).
     const prompt = (data.prompt || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
+    // A Korean style directive ("짧게 말해", "반말로 해", "토큰 아껴") and an
+    // ordinary coding task ("이 함수 로직 간단히 해줘", "CLI 출력을 반말로 써",
+    // "응답 페이로드 토큰 줄여", "이 문서 존댓말로 바꿔") share the same words.
+    // Flipping the session-wide mode on the second kind is a false positive —
+    // the user asked for work on a file, not for a different speaking style,
+    // and the silent flip (or un-flip) is invisible until the next answer.
+    // Loose triggers therefore only count when the prompt is a short bare
+    // directive with no code-task object in it. Triggers that name the mode
+    // explicitly ("스윗 켜") are exempt — those can't be misread.
+    const CODE_TASK_OBJECT = /(코드|함수|메서드|클래스|변수|주석|docstring|파일|경로|출력|로그|스크립트|커밋|문서|readme|리드미|리팩터|리팩토링|테스트|스키마|쿼리|응답|요청|페이로드|필드|프롬프트|캐싱|번역|카피|문구|api|cli|ui|json|yaml|sql)/;
+    const bareDirective = prompt.length <= 30 && !CODE_TASK_OBJECT.test(prompt);
+
     // Deactivation intent — computed FIRST so "turn sweet mode off" never
     // falls through to the activation patterns (#598: the old contiguous
     // "turn off" phrasing missed the "turn X off" word order entirely, and
@@ -49,8 +61,12 @@ process.stdin.on('end', () => {
       // Avoid \b next to Hangul — JS \w excludes Hangul, so the boundary
       // lands in surprising places. Use explicit suffix alternatives instead.
       /(스윗|스위트)\s*(모드)?\s*(끄기|꺼줘|꺼|끄고|해제|그만|중단|off)/.test(prompt) ||
-      /(일반|보통|평소)\s*모드/.test(prompt) ||
-      /존댓말(로|으로)?\s*(해|말해|답해|바꿔|써)/.test(prompt) ||
+      // "일반 모드" as a command (prompt-initial) or with sweet context — never
+      // mid-sentence, where it is an ordinary feature name ("설정 화면에 일반
+      // 모드 토글 추가해") that must not silently switch sweet off.
+      /^(다시\s*|이제\s*)?(일반|보통|평소)\s*모드(로|으로)?\s*(해|해줘|가|가자|바꿔|전환|복귀)?\s*[.!]*$/.test(prompt) ||
+      (/(일반|보통|평소)\s*모드/.test(prompt) && /(스윗|스위트)/.test(prompt)) ||
+      (bareDirective && /존댓말(로|으로)?\s*(해|말해|답해|바꿔|써)/.test(prompt)) ||
       /^(스윗\s*)?그만\s*(해|하자|해줘)?\s*[.!]*$/.test(prompt);
 
     // Questions about sweet are not activation commands
@@ -78,10 +94,10 @@ process.stdin.on('end', () => {
           // Korean activation. README promises these phrases.
           /(스윗|스위트)\s*(모드)?\s*(켜|켜줘|활성|시작|on)/.test(prompt) ||
           /^(스윗|스위트)(\s*모드)?\s*[.!]*$/.test(prompt) ||
-          /(다정하게|귀엽게|애교|사근사근)\s*(말해|답해|얘기해|해줘|해)/.test(prompt) ||
-          /반말(로|루)?\s*(해|말해|답해|얘기해|해줘|써)/.test(prompt) ||
-          /(짧게|간단히|간결하게|간략히)\s*(말해|답해|얘기해|대답|해줘)/.test(prompt) ||
-          /토큰\s*(좀\s*)?(아껴|아끼|절약|줄여)/.test(prompt)) {
+          (bareDirective && /(다정하게|귀엽게|애교|사근사근)\s*(말해|답해|얘기해|해줘|해)/.test(prompt)) ||
+          (bareDirective && /반말(로|루)?\s*(해|말해|답해|얘기해|해줘|써)/.test(prompt)) ||
+          (bareDirective && /(짧게|간단히|간결하게|간략히)\s*(말해|답해|얘기해|대답|해줘)/.test(prompt)) ||
+          (bareDirective && /토큰\s*(좀\s*)?(아껴|아끼|절약|줄여)/.test(prompt))) {
         const mode = getDefaultMode();
         if (mode !== 'off') {
           recordModeChange(claudeDir, mode); // #601: timestamped transition log
@@ -214,7 +230,9 @@ process.stdin.on('end', () => {
           additionalContext: "SWEET MODE ACTIVE (" + activeMode + "). " +
             "한국어 반말로만 답한다. 호칭 '오빠'는 응답당 0~1번. " +
             "조사·군더더기·상투어·완충 표현 버린다. 단문 OK. " +
-            "코드·커밋 메시지·보안 경고는 평문."
+            "코드·커밋 메시지·보안 경고는 평문. " +
+            "파일에 남는 산문(주석·docstring·문서)은 레포 언어 관례. " +
+            "압축은 말투에만 — 실패·에러·미완료는 생략 금지."
         }
       }));
     }

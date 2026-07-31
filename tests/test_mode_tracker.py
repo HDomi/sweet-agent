@@ -132,6 +132,51 @@ class ModeTrackerTests(unittest.TestCase):
         self.send("sweet mode")
         self.assertEqual(self.flag_value(), "full")
 
+    # ── coding tasks must not flip the mode ─────────────────────────────
+    # The Korean words for "briefly", "casually", "save tokens" are also
+    # ordinary words in a work request. Flipping a session-wide mode on those
+    # is a silent false positive: the user asked for an edit to a file, not for
+    # a different speaking style.
+
+    def test_code_task_with_style_words_does_not_activate(self):
+        for prompt in [
+            "이 함수 로직 간단히 해줘",
+            "주석 좀 간결하게 해줘",
+            "리팩터링해서 코드 짧게 해줘",
+            "이 API 응답 페이로드 토큰 줄여",
+            "프롬프트 캐싱으로 토큰 절약하는 코드 써줘",
+            "CLI 출력을 반말로 써",
+            "UI 문구 다정하게 바꿔줘",
+        ]:
+            with self.subTest(prompt=prompt):
+                self.send(prompt)
+                self.assertIsNone(self.flag_value(), f"{prompt!r} must not activate")
+
+    def test_bare_style_directives_still_activate(self):
+        for prompt in ["짧게 말해", "반말로 해", "토큰 좀 아껴", "다정하게 말해줘"]:
+            with self.subTest(prompt=prompt):
+                if self.flag.exists():
+                    self.flag.unlink()
+                self.send(prompt)
+                self.assertEqual(self.flag_value(), "full", f"{prompt!r} must activate")
+
+    def test_feature_named_normal_mode_does_not_deactivate(self):
+        self.flag.write_text("full")
+        self.send("설정 화면에 일반 모드 토글 추가해")
+        self.assertEqual(self.flag_value(), "full")
+
+    def test_rewriting_a_doc_in_jondaemal_does_not_deactivate(self):
+        self.flag.write_text("full")
+        self.send("이 문서 존댓말로 바꿔")
+        self.assertEqual(self.flag_value(), "full")
+
+    def test_korean_deactivation_commands_still_work(self):
+        for prompt in ["일반 모드로 해", "존댓말로 해", "스윗 끄기"]:
+            with self.subTest(prompt=prompt):
+                self.flag.write_text("full")
+                self.send(prompt)
+                self.assertIsNone(self.flag_value(), f"{prompt!r} must deactivate")
+
     # ── slash commands ──────────────────────────────────────────────────
 
     def test_slash_sweet_level_switch(self):

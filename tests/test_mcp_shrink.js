@@ -45,11 +45,39 @@ test('drops filler and pleasantries', () => {
   assert.doesNotMatch(compressed, /basically/i);
 });
 
-test('drops hedging and "I will" leaders', () => {
-  const { compressed } = compress('I will perhaps connect to the database');
-  assert.doesNotMatch(compressed, /perhaps/i);
+test('drops "I will" leaders and opinion markers', () => {
+  const { compressed } = compress('I will connect to the database');
   assert.doesNotMatch(compressed, /^I will/i);
   assert.match(compressed, /database/i);
+
+  const opinion = compress('I think this returns the row').compressed;
+  assert.doesNotMatch(opinion, /i think/i);
+  assert.match(opinion, /returns row/i);
+});
+
+// Modality is contract, not filler. A tool description is what the model reads
+// to decide which tool to call and how to fill its args, so a rewrite that
+// turns "might return null" into "return null" is a wrong-call generator.
+test('preserves modality and scope adverbs', () => {
+  const cases = [
+    ['The tool might return null if the record is missing.', /might return null/i],
+    ['This could potentially time out on a large file.',      /could potentially/i],
+    ['Matches the pattern literally, not as a regex.',        /literally/i],
+    ['Returns only the first match.',                         /only/i],
+    ['The cursor may be omitted.',                            /may be omitted/i],
+    ['You can pass a limit; the default is 100.',             /you can pass/i],
+  ];
+  for (const [input, needle] of cases) {
+    const { compressed } = compress(input);
+    assert.match(compressed, needle, `lost meaning-bearing word in: ${compressed}`);
+  }
+});
+
+test('preserves "make sure" / "be sure" but drops the "Sure," opener', () => {
+  assert.match(compress('Make sure the path exists before writing.').compressed,
+    /make sure path exists/i);
+  assert.match(compress('Be sure to close the handle.').compressed, /be sure/i);
+  assert.doesNotMatch(compress('Sure, this returns the value').compressed, /sure/i);
 });
 
 test('preserves fenced code blocks verbatim', () => {
@@ -118,6 +146,29 @@ test('compressDescriptionsInPlace walks nested tools/list response', () => {
     `expected 'the' stripped, got: ${payload.result.tools[0].description}`);
   assert.match(payload.result.tools[0].description, /weather/i);
   assert.match(payload.result.tools[1].description, /email/i);
+});
+
+test('compressDescriptionsInPlace never rewrites schema descriptions', () => {
+  const payload = {
+    tools: [{
+      name: 'query',
+      description: 'Runs the query against the database.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'The maximum number of rows to return.' },
+        },
+      },
+    }],
+  };
+  compressDescriptionsInPlace(payload, ['description']);
+  assert.equal(
+    payload.tools[0].inputSchema.properties.limit.description,
+    'The maximum number of rows to return.',
+    'parameter descriptions drive argument values — they must pass through untouched'
+  );
+  // Tool-level prose still compresses.
+  assert.doesNotMatch(payload.tools[0].description, /\bthe\b/i);
 });
 
 test('compressDescriptionsInPlace skips non-string description fields', () => {

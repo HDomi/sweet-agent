@@ -56,6 +56,30 @@ python3 -m scripts <absolute_filepath>
 - Dates, version numbers, numeric values
 - Environment variables (`$HOME`, `NODE_ENV`)
 
+### Preserve MEANING (rules files are instructions, not prose)
+
+A compressed `CLAUDE.md` is what the agent obeys next session. These three
+classes of word change what the agent DOES, so they survive compression even
+when they cost tokens:
+
+- **Polarity** — `never`, `don't`, `avoid`, `no`, 금지, 절대, 마라. "Never mock
+  the DB in integration tests" may become "No DB mocking in integration tests";
+  it may not become "Mock the DB in integration tests".
+- **Conditions and scope** — `unless`, `only`, `except`, `if`, `when`, ~할 때만,
+  ~인 경우. "Avoid `any` unless unavoidable" keeps the escape hatch.
+- **Order and obligation** — `before`, `after`, `first`, `must`, `always`,
+  `required` vs `optional`, 먼저, 반드시, 필수/선택. "Run migration before
+  deploy" is not "Run migration, deploy".
+
+Drop the *rationale* only when the rule survives intact. When a rule and its
+reason both fit in one short sentence, keep both — a rule with a reason gets
+followed more reliably than a bare imperative.
+
+`scripts/validate.py` enforces the polarity half automatically: if a section
+carried a prohibition and the compressed section carries no negation at all,
+validation fails and the fix pass runs. It cannot check conditions or ordering
+— that is on you.
+
 ### Preserve Structure
 - All markdown headings (keep exact heading text, compress body below)
 - Bullet point hierarchy (keep nesting level)
