@@ -1,5 +1,5 @@
-# sweet — one-command hook installer for Claude Code (Windows PowerShell)
-# Installs: SessionStart hook (auto-load rules) + UserPromptSubmit hook (mode tracking)
+# caveman — one-command hook installer for Claude Code (Windows PowerShell)
+# Installs: SessionStart hook (auto-load rules) + SubagentStart hook (subagent mode) + UserPromptSubmit hook (mode tracking) + SessionEnd stats recorder
 # Usage: powershell -ExecutionPolicy Bypass -File src\hooks\install.ps1
 #   or:  powershell -ExecutionPolicy Bypass -File src\hooks\install.ps1 -Force
 #   or (remote, no -Force support via pipe):
@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 
 # Require node
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Write-Host "ERROR: 'node' is required to install the sweet hooks (used to merge" -ForegroundColor Red
+    Write-Host "ERROR: 'node' is required to install the caveman hooks (used to merge" -ForegroundColor Red
     Write-Host "       the hook config into settings.json safely)." -ForegroundColor Red
     Write-Host "       Install Node.js from https://nodejs.org and re-run this script." -ForegroundColor Red
     exit 1
@@ -22,12 +22,46 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 $ClaudeDir = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $env:USERPROFILE ".claude" }
 $HooksDir = Join-Path $ClaudeDir "hooks"
 $Settings = Join-Path $ClaudeDir "settings.json"
-$RepoUrl = "https://raw.githubusercontent.com/HDomi/sweet-agent/main/hooks"
+$RepoUrl = "https://raw.githubusercontent.com/HDomi/sweet-agent/main/src/hooks"
 
-$HookFiles = @("package.json", "sweet-config.js", "sweet-activate.js", "sweet-mode-tracker.js", "sweet-stats.js", "sweet-statusline.sh", "sweet-statusline.ps1", "sweetcrew-model-overrides.js")
+$HookFiles = @("package.json", "caveman-config.js", "caveman-parse.js", "caveman-activate.js", "caveman-mode-tracker.js", "caveman-stats.js", "caveman-statusline.sh", "caveman-statusline.ps1", "cavecrew-model-overrides.js")
 
 # Resolve source — works from repo clone or remote
 $ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { $null }
+
+# Use the unified JSONC parser when running from a clone. Standalone copies
+# refuse unreadable settings before copying hooks or replacing existing files.
+$SettingsHelper = ""
+if ($ScriptDir) {
+    $candidate = Join-Path $ScriptDir "../../installer/lib/settings.js"
+    if (Test-Path -LiteralPath $candidate) { $SettingsHelper = $candidate }
+}
+$env:CAVEMAN_SETTINGS = $Settings
+$env:CAVEMAN_HOOKS_DIR = $HooksDir
+$env:CAVEMAN_SETTINGS_HELPER = $SettingsHelper
+@'
+const fs = require('fs');
+try {
+  const manifest = process.env.CAVEMAN_HOOKS_DIR + '/package.json';
+  if (fs.existsSync(manifest)) {
+    const value = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+    if (!value || typeof value !== 'object' || Array.isArray(value) || (value.type !== undefined && value.type !== 'commonjs')) {
+      throw new Error('existing hooks/package.json is incompatible with CommonJS hooks');
+    }
+  }
+  const file = process.env.CAVEMAN_SETTINGS;
+  if (fs.existsSync(file)) {
+    const helper = process.env.CAVEMAN_SETTINGS_HELPER;
+    const value = helper ? require(helper).readSettings(file) : JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('settings.json must be a readable object');
+  }
+} catch (error) {
+  console.error('Cannot install standalone hooks: ' + error.message);
+  console.error('Nothing was changed. For JSONC settings, use installer/install.js from a clone.');
+  process.exit(1);
+}
+'@ | node --input-type=commonjs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Check if already installed (unless -Force). Older installs only had two hook
 # files, so require the full current set plus the hook registrations before we
@@ -44,34 +78,45 @@ if (-not $Force) {
     $HooksWired = $false
     $HasStatusLine = $false
     if ($AllFilesPresent -and (Test-Path $Settings)) {
-        try {
-            $settingsObj = Get-Content $Settings -Raw | ConvertFrom-Json
-            $hasSweetHook = {
-                param([string]$eventName)
-                if (-not $settingsObj.hooks) { return $false }
-                $entries = $settingsObj.hooks.$eventName
-                if (-not $entries) { return $false }
-                foreach ($entry in $entries) {
-                    if ($entry.hooks) {
-                        foreach ($hookDef in $entry.hooks) {
-                            if ($hookDef.command -and $hookDef.command.Contains("sweet")) {
-                                return $true
-                            }
-                        }
-                    }
-                }
-                return $false
-            }
-            $HooksWired = (& $hasSweetHook "SessionStart") -and (& $hasSweetHook "UserPromptSubmit")
-            $HasStatusLine = $null -ne $settingsObj.statusLine
-        } catch {
-            $HooksWired = $false
-            $HasStatusLine = $false
+        $env:CAVEMAN_SETTINGS = $Settings
+        $env:CAVEMAN_SETTINGS_HELPER = $SettingsHelper
+        @'
+const fs = require('fs');
+try {
+  const helper = process.env.CAVEMAN_SETTINGS_HELPER;
+  const settings = helper
+    ? require(helper).readSettings(process.env.CAVEMAN_SETTINGS)
+    : JSON.parse(fs.readFileSync(process.env.CAVEMAN_SETTINGS, 'utf8'));
+  // Probe for the exact script we wire for this event, not a bare
+  // 'caveman' substring - that also matches user hooks merely
+  // mentioning the word in a path (#593), which made us skip wiring
+  // and silently leave caveman inactive. Mirrors install.sh.
+  const hasCavemanHook = (event, script) =>
+    Array.isArray(settings.hooks?.[event]) &&
+    settings.hooks[event].some(e =>
+      e.hooks && e.hooks.some(h => h.command && h.command.includes(script))
+    );
+  process.exit(
+    hasCavemanHook('SessionStart', 'caveman-activate.js') &&
+    hasCavemanHook('SubagentStart', 'caveman-activate.js') &&
+    hasCavemanHook('UserPromptSubmit', 'caveman-mode-tracker.js') &&
+    hasCavemanHook('SessionEnd', 'caveman-stats.js') &&
+    !!settings.statusLine
+      ? 0
+      : 1
+  );
+} catch {
+  process.exit(1);
+}
+'@ | node --input-type=commonjs >$null 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $HooksWired = $true
+            $HasStatusLine = $true
         }
     }
 
     if ($AllFilesPresent -and $HooksWired -and $HasStatusLine) {
-        Write-Host "Sweet hooks already installed in $HooksDir"
+        Write-Host "Caveman hooks already installed in $HooksDir"
         Write-Host "  Re-run with -Force to overwrite: powershell -File hooks\install.ps1 -Force"
         Write-Host ""
         Write-Host "Nothing to do. Hooks are already in place."
@@ -79,10 +124,10 @@ if (-not $Force) {
     }
 }
 
-if ($Force -and (Test-Path (Join-Path $HooksDir "sweet-activate.js"))) {
-    Write-Host "Reinstalling sweet hooks (-Force)..."
+if ($Force -and (Test-Path (Join-Path $HooksDir "caveman-activate.js"))) {
+    Write-Host "Reinstalling caveman hooks (-Force)..."
 } else {
-    Write-Host "Installing sweet hooks..."
+    Write-Host "Installing caveman hooks..."
 }
 
 # 1. Ensure hooks dir exists
@@ -93,6 +138,10 @@ if (-not (Test-Path $HooksDir)) {
 # 2. Copy or download hook files
 foreach ($hook in $HookFiles) {
     $dest = Join-Path $HooksDir $hook
+    if ($hook -eq "package.json" -and (Test-Path -LiteralPath $dest)) {
+        Write-Host "  Preserved existing: $dest"
+        continue
+    }
     $localSource = if ($ScriptDir) { Join-Path $ScriptDir $hook } else { $null }
 
     if ($localSource -and (Test-Path $localSource)) {
@@ -108,35 +157,63 @@ if (-not (Test-Path $Settings)) {
     Set-Content -Path $Settings -Value "{}"
 }
 
-# Back up existing settings.json before touching it
-Copy-Item $Settings "$Settings.bak" -Force
+# Back up existing settings.json before touching it. Back up ONCE: without the
+# Test-Path guard a -Force reinstall overwrites the only pre-caveman copy with
+# the already-merged file, destroying the user's recovery path. Same guard as
+# installer/install.js.
+if (-not (Test-Path "$Settings.bak")) {
+    Copy-Item $Settings "$Settings.bak"
+}
 
 # Use node for safe JSON merging — pass paths via env vars to avoid injection
 # if the username contains a single quote (e.g., O'Brien).
 # Use a single-quote here-string so PowerShell does NOT expand $variables inside.
-$env:SWEET_SETTINGS = $Settings -replace '\\', '/'
-$env:SWEET_HOOKS_DIR = $HooksDir -replace '\\', '/'
+$env:CAVEMAN_SETTINGS = $Settings -replace '\\', '/'
+$env:CAVEMAN_HOOKS_DIR = $HooksDir -replace '\\', '/'
 
 $nodeScript = @'
 const fs = require('fs');
-const settingsPath = process.env.SWEET_SETTINGS;
-const hooksDir = process.env.SWEET_HOOKS_DIR;
-const managedStatusLinePath = hooksDir + '/sweet-statusline.ps1';
-const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+const settingsPath = process.env.CAVEMAN_SETTINGS;
+const hooksDir = process.env.CAVEMAN_HOOKS_DIR;
+const managedStatusLinePath = hooksDir + '/caveman-statusline.ps1';
+const shared = process.env.CAVEMAN_SETTINGS_HELPER ? require(process.env.CAVEMAN_SETTINGS_HELPER) : null;
+const meta = {};
+const settings = shared ? shared.readSettings(settingsPath, meta) : JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error('settings.json must be a readable object');
+if (meta.jsonc) console.log('  Comments are preserved in ' + settingsPath + '.bak; updated settings use JSON.');
 if (!settings.hooks) settings.hooks = {};
 
 // SessionStart
 if (!settings.hooks.SessionStart) settings.hooks.SessionStart = [];
+// Match the exact script, not a bare 'caveman' substring — that also matches
+// user hooks merely mentioning the word in a path (#593), which made us skip
+// wiring and silently leave caveman inactive.
 const hasStart = settings.hooks.SessionStart.some(e =>
-  e.hooks && e.hooks.some(h => h.command && h.command.includes('sweet'))
+  e.hooks && e.hooks.some(h => h.command && h.command.includes('caveman-activate.js'))
 );
 if (!hasStart) {
   settings.hooks.SessionStart.push({
     hooks: [{
       type: 'command',
-      command: 'node "' + hooksDir + '/sweet-activate.js"',
-      timeout: 5,
-      statusMessage: 'Loading sweet mode...'
+      command: 'node "' + hooksDir + '/caveman-activate.js"',
+      timeout: 30,
+      statusMessage: 'Loading Sweet Agent mode...'
+    }]
+  });
+}
+
+// SubagentStart — hand subagents this session's active mode (#621)
+if (!settings.hooks.SubagentStart) settings.hooks.SubagentStart = [];
+const hasSubagent = settings.hooks.SubagentStart.some(e =>
+  e.hooks && e.hooks.some(h => h.command && h.command.includes('caveman-activate.js'))
+);
+if (!hasSubagent) {
+  settings.hooks.SubagentStart.push({
+    hooks: [{
+      type: 'command',
+      command: 'node "' + hooksDir + '/caveman-activate.js" --subagent',
+      timeout: 30,
+      statusMessage: 'Loading Sweet Agent mode for subagent...'
     }]
   });
 }
@@ -144,15 +221,31 @@ if (!hasStart) {
 // UserPromptSubmit
 if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
 const hasPrompt = settings.hooks.UserPromptSubmit.some(e =>
-  e.hooks && e.hooks.some(h => h.command && h.command.includes('sweet'))
+  e.hooks && e.hooks.some(h => h.command && h.command.includes('caveman-mode-tracker.js'))
 );
 if (!hasPrompt) {
   settings.hooks.UserPromptSubmit.push({
     hooks: [{
       type: 'command',
-      command: 'node "' + hooksDir + '/sweet-mode-tracker.js"',
+      command: 'node "' + hooksDir + '/caveman-mode-tracker.js"',
+      timeout: 30,
+      statusMessage: 'Tracking Sweet Agent mode...'
+    }]
+  });
+}
+
+// SessionEnd
+if (!settings.hooks.SessionEnd) settings.hooks.SessionEnd = [];
+const hasEnd = settings.hooks.SessionEnd.some(e =>
+  e.hooks && e.hooks.some(h => h.command && h.command.includes('caveman-stats.js'))
+);
+if (!hasEnd) {
+  settings.hooks.SessionEnd.push({
+    hooks: [{
+      type: 'command',
+      command: 'node "' + hooksDir + '/caveman-stats.js" --record',
       timeout: 5,
-      statusMessage: 'Tracking sweet mode...'
+      statusMessage: 'Recording Sweet Agent stats...'
     }]
   });
 }
@@ -171,28 +264,36 @@ if (!settings.statusLine) {
   if (cmd.includes(managedStatusLinePath)) {
     console.log('  Statusline badge already configured.');
   } else {
-    console.log('  NOTE: Existing statusline detected - sweet badge NOT added.');
+    console.log('  NOTE: Existing statusline detected - caveman badge NOT added.');
     console.log('        See src/hooks/README.md to add the badge to your existing statusline.');
   }
 }
 
-fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+if (shared) shared.writeSettings(settingsPath, settings);
+else fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
 console.log('  Hooks wired in settings.json');
 '@
 
-$tmpScript = Join-Path $env:TEMP "sweet-install-$([System.Diagnostics.Process]::GetCurrentProcess().Id).js"
+$tmpScript = Join-Path $env:TEMP "caveman-install-$([System.Diagnostics.Process]::GetCurrentProcess().Id).js"
 try {
     [System.IO.File]::WriteAllText($tmpScript, $nodeScript, [System.Text.Encoding]::UTF8)
     node $tmpScript
+    $MergeExitCode = $LASTEXITCODE
 } finally {
     if (Test-Path $tmpScript) { Remove-Item $tmpScript -Force }
+}
+if ($MergeExitCode -ne 0) {
+    Write-Host "Hook settings could not be updated; installation did not complete." -ForegroundColor Red
+    exit $MergeExitCode
 }
 
 Write-Host ""
 Write-Host "Done! Restart Claude Code to activate." -ForegroundColor Green
 Write-Host ""
 Write-Host "What's installed:"
-Write-Host "  - SessionStart hook: auto-loads sweet rules every session"
+Write-Host "  - SessionStart hook: auto-loads caveman rules every session"
+Write-Host "  - SubagentStart hook: subagents inherit the session's active mode"
 Write-Host "  - Mode tracker hook: updates statusline badge when you switch modes"
-Write-Host "    (/sweet lite, /sweet ultra, /sweet-commit, etc.)"
-Write-Host "  - Statusline badge: shows [SWEET] or [SWEET:ULTRA] etc."
+Write-Host "    (/caveman, /ultracave, /megacave, /caveman-commit, etc.)"
+Write-Host "  - SessionEnd hook: records lifetime stats silently"
+Write-Host "  - Statusline badge: shows [CAVEMAN], [ULTRACAVE] or [MEGACAVE]"

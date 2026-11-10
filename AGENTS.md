@@ -1,4 +1,18 @@
-@./skills/sweet/SKILL.md
-@./skills/sweet-commit/SKILL.md
-@./skills/sweet-review/SKILL.md
-@./skills/sweet-compress/SKILL.md
+Read `CLAUDE.md` before repository work. Binding routing: this repo owns
+skills, Engine, and MV3 extension; Agent SDK work belongs in
+`/Users/julb/Desktop/GitHub/caveman-agent-sdk`; Browse driver/MCP/benchmark/plugin
+work belongs in `/Users/julb/Desktop/GitHub/caveman-browse`; proprietary Pebble
+product work belongs in `/Users/julb/Desktop/GitHub/caveman-coding-agent`.
+
+Visibility: this repo and `caveman-browse` are public now;
+`caveman-agent-sdk` is private during development with planned public release
+after its gates; `caveman-coding-agent` and Caveman-Cloud remain private
+commercial source.
+
+Load `skills/caveman/SKILL.md` only while caveman mode is on. Load
+`skills/caveman-commit/SKILL.md`, `skills/caveman-review/SKILL.md`, or
+`skills/caveman-compress/SKILL.md` only when that task is asked.
+
+## Sweet fork
+
+Default to full intensity from `skills/sweet/SKILL.md`. Always reply in Korean. Preserve technical substance and verification reports. Keep upstream engine package names, internal paths and licenses. Read `docs/SWEET-FORK.md` for fork ownership and update steps.

@@ -1,64 +1,70 @@
-# 숫자에 대해
+# Honest Numbers
 
-sweet-agent 는 토큰을 아낄 때도 있고 더 쓸 때도 있다. 이 문서는 어느 쪽인지 솔직하게 적는다. 마케팅 없음. 당신의 작업에서 손해라면, 이 문서가 끄라고 말한다.
+Caveman save tokens sometimes. Caveman cost tokens sometimes. This page say which is which, with the real numbers. No marketing. If caveman lose for your workload, this page tell you to turn it off.
 
-## sweet-agent 가 실제로 하는 일
+## What the response skill does
 
-sweet-agent 는 시스템 프롬프트 스킬이다. 모델이 **출력을 짧게 쓰게** 만든다. 그게 전부다. 입력, 컨텍스트, 파일, 모델의 사고 토큰은 압축하지 않는다.
+The Caveman response skill makes model write shorter output. Skill itself
+does not compress input, context, files, or model thinking tokens. Caveman local
+Engine and proxy are separate components that can compress recoverable input;
+see [Product model](technical/product-model.md).
 
-## 측정된 숫자
+## The measured numbers
 
-**없다.** 아직 한국어로 측정한 값이 하나도 없다.
+| What | Number | How measured | Source |
+|---|---|---|---|
+| Output reduction vs a plain `Answer concisely.` control | caveman 3%, ultracave 35%, megacave 9% at the median (n=10, single run, output length only, tiktoken o200k approximation; measured on the 3.1.0 skill text, not re-run since the 3.2.0 rule changes) | `evals/llm_run.py` on claude-opus-5-5 with host settings isolated; `evals/measure.py` | [`evals/snapshots/results.json`](../evals/snapshots/results.json) |
+| Output reduction vs default verbose replies (no benchmark harness run) | Not published | `benchmarks/` harness exists, but the repository has no committed reviewed raw result | [`benchmarks/`](../benchmarks/) |
+| Input reduction from the skill | 0% | It's an output-style instruction | Not applicable |
+| Input cost the skill *adds* | Not measured yet | `evals/llm_run.py` now stores the usage Claude Code reports for every call, and `evals/measure.py` reports the median input tokens the skill adds against the terse control. The committed snapshot predates usage capture. File size is not a billed token count, and real agents differ in when they inject rules and how they cache | [`evals/README.md`](../evals/README.md) |
+| `/caveman-compress` on memory files | 33.2% total input reduction across five listed fixtures (22.8–49.1% per file, tiktoken o200k) | `skills/caveman-compress/scripts/benchmark.py` over `tests/caveman-compress/`, plus structural checks; no general quality-equivalence claim | [caveman-compress fixtures](../skills/caveman-compress/README.md#benchmarks) |
 
-| 항목 | 값 | 근거 |
-|---|---|---|
-| 출력 감소율 | **미측정** | `benchmarks/results/` 가 비어 있다 |
-| 스킬로 인한 입력 감소 | **0%** | 출력 문체 지시문이라 구조적으로 0 |
-| 스킬이 *추가하는* 입력 비용 | 매 턴 SKILL.md 규칙만큼 (수 KB) | [`skills/sweet/SKILL.md`](../skills/sweet/SKILL.md) 크기로 직접 확인 가능 |
-| `/sweet-compress` 의 메모리 파일 감소율 | **미측정** | 한국어 파일로 측정한 값 없음 |
+Token-count runs measure output length only. They do not prove semantic or technical equivalence. Publish a reduction only with committed raw pairs and separate quality review. A fidelity eval now exists (`evals/score_fidelity.py`: fixed cases, regex checks for kept numbers, negations, language and safety wording, scored for every arm), but no reviewed fidelity snapshot is committed, so no quality claim is published. The full eval harness and its correction history are documented in [`evals/README.md`](../evals/README.md).
 
-이 프로젝트는 영어 [caveman](https://github.com/JuliusBrussee/caveman) 에서 갈라져 나왔다. 원본에는 "출력 토큰 65% 절감 (10개 프롬프트 평균, 범위 22–87%)" 이라는 실측치가 있었다. 그 숫자는 **영어** 압축 문체를 측정한 값이다. 한국어 반말은 조사 생략과 어미 축약으로 압축되는 방식 자체가 다르고, 한글은 토크나이저에서 문자당 토큰 수도 다르다. 그래서 그 값을 그대로 옮기지 않고 지웠다.
+## When caveman wins
 
-`/sweet-stats` 도 같은 이유로 절감 추정치를 내놓지 않는다. 실제 토큰 수만 보여준다.
+- Long chatty outputs give terse style more removable prose. Measure your own A/B; no aggregate reduction is currently published.
+- Longer sessions can accumulate output reduction; measure the rules' input cost and cache behavior in the same comparison.
+- Shorter replies can finish sooner and take less time to read.
 
-## 직접 측정하는 방법
+## When caveman loses (net-negative)
 
-1. `benchmarks/prompts.json` 을 한국어 프롬프트로 채운다.
-2. `.env.local` 에 `ANTHROPIC_API_KEY` 를 넣고 `uv run python benchmarks/run.py` 를 돌린다.
-3. 결과가 `benchmarks/results/*.json` 에 저장된다.
-4. 측정된 비율을 `/sweet-stats` 에 알려주면 절감 추정이 나온다:
-   ```bash
-   export SWEET_COMPRESSION_RATIOS='{"full":0.65}'   # 직접 측정한 값으로
-   ```
+The rules can add input tokens. Whether shorter output offsets that cost
+depends on the agent, cache behavior, workload, and billing model. Comparing
+raw input and output token counts alone does not establish a monetary net result.
 
-`evals/` 의 3-arm 하네스도 있다. 정직한 비교 대상은 **스킬 vs "간결하게 답해"** 다. 아무 지시도 없는 기본값과 비교하면 스킬 효과와 일반적인 간결함이 뒤섞여서 숫자가 부풀려진다. 하네스가 이걸 막도록 설계돼 있다.
+- Terse coding Q&A ([#145](https://github.com/JuliusBrussee/caveman/issues/145)): fixed prompt overhead can exceed any output reduction. User in #145 measured a net loss.
+- Agents billed by request or credit ([#506](https://github.com/JuliusBrussee/caveman/issues/506)): GitHub Copilot charges premium *requests*. A shorter answer is same request, so Caveman cannot lower Copilot credit use. Same applies to other per-message pricing.
+- Session totals can differ sharply from output-only changes because prompts, context, files, and injected rules consume tokens. Provider-billed A/B totals outrank output-only estimates.
+- Tool-side counters can go wrong direction ([#550](https://github.com/JuliusBrussee/caveman/issues/550)). One Cursor A/B showed 4.3M tokens with caveman versus 1M without and twice wall-clock time. Exact run was not reproducible, so only safe conclusion is that rule re-injection, retries, and cache or context accounting can overwhelm output savings. Turn Caveman off if your A/B is net-negative.
 
-## 언제 이득인가
+## Outside A/Bs
 
-- **길고 수다스러운 출력.** 설명, 아키텍처 논의, 코드 리뷰, 문서, 디버깅 과정 — 모델이 응답당 출력 토큰을 많이 쓰는 곳. 절감이 큰 구간이다.
-- **말이 많은 에이전트로 긴 세션.** 응답당 절감은 누적되는데, 규칙이 추가하는 고정 입력 비용은 턴마다 일정하다.
-- **읽는 속도.** 짧은 답이 먼저 끝나고 더 빨리 읽힌다. 많은 사용자에게는 비용이 아니라 이게 진짜 이득이다.
+Other people's runs, not ours. Each names the skill version it tested. Caveman 3 rewrote the rules after these runs, so treat them as evidence about the approach, not about today's exact file.
 
-## 언제 손해인가
+- **LemonCrow** ([#727](https://github.com/JuliusBrussee/caveman/issues/727)): 20 engineering prompts × 5 reps × 3 runs (300 runs per arm), `claude-opus-4-8`, July 2026 `skills/caveman/SKILL.md` as the only extra system instruction. Billed output −44.1%. Total cost +0.06%. Initial cached context +1,532 tokens per run. [Method](https://github.com/lemoncrow-lab/lemoncrow/blob/main/BENCHMARKS.md#telegraphic-qa-benchmark) · [raw results](https://github.com/lemoncrow-lab/lemoncrow/tree/main/benchmarks/codebench/results/telegraphic_2026_07_17)
+- **edubraqd** ([#733 comment, 2026-09-14](https://github.com/JuliusBrussee/caveman/issues/733#issuecomment-5657222190)): 10 dev questions in pt-BR, `haiku-4-5`, 20 replies per arm, pre-3.0 SKILL.md at the `full` level. On top of a CLAUDE.md that already asks for terse replies, caveman cut output 8% (median −5%, stdev 25%). Separately, across 662 Claude Code sessions, output was 0.3% of all tokens and caveman's net effect on the bill was within ±0.2%.
+- **JetBrains** ([blog, July 2026](https://blog.jetbrains.com/ai/2026/07/speak-to-ai-agents-like-cavemen-tosave-tokens/)): 86 real coding tasks, paired A/B. 8.5% fewer output tokens, no measurable quality loss (p = 0.82).
 
-솔직하게: **스킬은 매 턴 입력 토큰을 추가한다. 아끼는 출력이 그보다 적으면 돈을 더 내고 쓰는 거다.**
+Common thread: output shrink, but an agent run's bill is mostly input and cache re-reads, which an output-style rule cannot touch. The [proxy](../README.md#read-less-332-fewer-input-tokens) goes after that input instead.
 
-- **짧은 코딩 Q&A.** 평소 응답이 150 토큰 수준이면 아끼는 건 몇십 토큰인데 규칙 오버헤드가 매 턴 붙는다. 순손실이다.
-- **요청·크레딧 단위로 과금하는 에이전트.** GitHub Copilot 은 프리미엄 *요청* 수로 과금한다. 답이 짧아도 같은 요청 하나다. 크레딧 사용량은 안 줄어든다. 메시지 단위 과금 전부 같은 논리다.
-- **세션 전체 합계는 항상 출력 감소율보다 작다.** 에이전틱 코딩에서는 입력 토큰(프롬프트, 컨텍스트, 파일, 주입된 규칙)이 출력 토큰을 압도한다.
-- **도구 쪽 카운터가 거꾸로 가는 경우도 있다.** 규칙 재주입, 재시도, 캐시·컨텍스트 회계 방식 때문에 일부 에이전트에서는 출력 절감이 묻힐 수 있다. A/B 결과가 그렇게 나오면 당신의 환경에서는 손해다. 끄면 된다. 도구가 잘 동작하길 바라는 마음이 실제 동작을 만들어주지는 않는다.
+## Measure it yourself
 
-위 네 가지는 상류 caveman 프로젝트에서 사용자들이 실측으로 보고한 패턴이다 ([caveman issues](https://github.com/JuliusBrussee/caveman/issues) 참고). 메커니즘이 동일하므로 한국어 버전에도 그대로 적용된다.
+1. `/caveman-stats` (Claude Code) reads the session log and prints recorded output/cache-read counts and mode attribution. It reports savings as unknown because that transcript has no measured comparison without Caveman. A benchmark on other tasks would not verify savings for this session.
+2. Run same task with and without Caveman, then compare provider usage or billing page. That A/B outranks repository estimates.
+3. Reproduce repository numbers with `benchmarks/run.py` (Anthropic key required) and `evals/measure.py` (offline committed snapshot).
 
-## 스스로 검증하기
+## Rule of thumb
 
-1. **`/sweet-stats`** (Claude Code) 가 실제 세션 로그를 읽어 진짜 입출력 토큰 수를 출력한다. 압축률을 설정하지 않으면 절감 추정 줄은 아예 안 나온다 — 추측한 숫자를 보여주지 않기 위해서다.
-2. **완전히 정직한 검증은 A/B 뿐이다.** 같은 작업을 켜고 한 번, 끄고 한 번 돌린 뒤 사용하는 제공자의 사용량·청구 페이지를 비교한다. 그 숫자가 이 레포가 출력하는 어떤 값보다 우선한다.
+> Compare provider-billed totals on the same task with and without Caveman.
+> If Caveman increases billed cost for the same task, turn it off for that workload.
 
-## 대략적인 기준
+Earlier stats releases applied a fixed 65% output ratio without a committed
+reviewed result. Current reports ignore those historical `est_saved_*` fields
+while preserving the original history rows. Lifetime and shared reports do
+not convert those estimates into verified savings, and the statusline no
+longer displays the numeric savings suffix. Memory-file comparisons report
+original and current bytes; they do not prove either file was sent to a provider.
 
-> 평소 답이 길다 (출력 토큰이 규칙 오버헤드보다 훨씬 크다) → 아마 이득.
-> 평소 답이 짧다, 또는 요청 단위 과금 → 아마 손해.
-> 어느 쪽이든 답은 빨리 읽힌다. 그건 공짜다.
-
-숫자가 틀린 작업 유형을 찾았다면 A/B 결과와 함께 [이슈를 열어](https://github.com/HDomi/sweet-agent/issues) 주면 이 문서에 반영한다.
+If your A/B contradicts these numbers, [open an issue](https://github.com/JuliusBrussee/caveman/issues).
+We will add result to this page.

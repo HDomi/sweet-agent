@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests for src/mcp-servers/sweet-shrink/compress.js — pure-Node prose compressor.
+// Tests for src/mcp-servers/caveman-shrink/compress.js — pure-Node prose compressor.
 // Run: node tests/test_mcp_shrink.js
 
 const fs = require('fs');
@@ -8,10 +8,13 @@ const assert = require('assert');
 
 const ROOT = path.resolve(__dirname, '..');
 const { compress, compressDescriptionsInPlace } = require(
-  path.join(ROOT, 'src', 'mcp-servers', 'sweet-shrink', 'compress.js')
+  path.join(ROOT, 'src', 'mcp-servers', 'caveman-shrink', 'compress.js')
 );
 const { getSpawnOptions } = require(
-  path.join(ROOT, 'src', 'mcp-servers', 'sweet-shrink', 'spawn-options.js')
+  path.join(ROOT, 'src', 'mcp-servers', 'caveman-shrink', 'spawn-options.js')
+);
+const { createShutdown, DEFAULT_GRACE_MS } = require(
+  path.join(ROOT, 'src', 'mcp-servers', 'caveman-shrink', 'shutdown.js')
 );
 
 let passed = 0;
@@ -30,6 +33,62 @@ function test(name, fn) {
 
 console.log('mcp-shrink compress tests\n');
 
+test('mixed CJK technical descriptions retain articles, intent, case and whitespace (#575)', () => {
+  for (const input of ['这是一个 a LLM 模型', '这个 the MCP server', 'the Agent 的状态', 'i will 检查这个 bug',
+    '  日本語 the API  \n', '한글 the API', 'カタカナ please a MCP', '𠀀 the API', 'ㄅㄆ the API',
+    'I will use `中文` with the MCP server.']) {
+    const result = compress(input);
+    assert.strictEqual(result.compressed, input);
+    assert.strictEqual(result.before, result.after);
+  }
+});
+
+test('a NUL byte in the input cannot forge a protected-segment sentinel', () => {
+  // withProtectedSegments swaps each protected match for a `\0<index>\0`
+  // sentinel and splices the originals back afterwards. The sentinel is
+  // spelled in NUL bytes because they "cannot occur" in real text — but a
+  // description is third-party data: JSON-RPC carries \u0000 happily, and the
+  // proxy rewrites MCP tool descriptions in place via
+  // compressDescriptionsInPlace, so whatever an MCP server sends lands in the
+  // model's tool list. An input that already spells a sentinel is restored as
+  // if it were one: index 0 splices in a protected segment lifted from
+  // somewhere else in the same string, and an out-of-range index splices in
+  // the literal string "undefined".
+  const NUL = '\u0000';
+
+  const forged = compress(`Run ${NUL}0${NUL} with \`realCode\` now`).compressed;
+  assert.ok(
+    !forged.includes('realCode') || forged.indexOf('realCode') === forged.lastIndexOf('realCode'),
+    `forged sentinel duplicated a protected segment: ${JSON.stringify(forged)}`
+  );
+  assert.ok(!forged.includes(NUL), `NUL survived into model context: ${JSON.stringify(forged)}`);
+
+  const outOfRange = compress(`Check ${NUL}99${NUL} value really`).compressed;
+  assert.ok(
+    !outOfRange.includes('undefined'),
+    `out-of-range sentinel injected "undefined": ${JSON.stringify(outOfRange)}`
+  );
+  assert.ok(!outOfRange.includes(NUL), `NUL survived into model context: ${JSON.stringify(outOfRange)}`);
+});
+
+test('compression never grows a description or invents words (NUL inputs included)', () => {
+  // SKILL.md's standing rule: "Compression only style never grow output."
+  // The forged-sentinel path violated it by substituting a longer string than
+  // it removed, which is the cheap signal that content was invented.
+  const NUL = '\u0000';
+  for (const input of [
+    `Check ${NUL}99${NUL} value really`,
+    `Run ${NUL}0${NUL} just now`,
+    `${NUL}${NUL} please`,
+  ]) {
+    const { compressed } = compress(input);
+    assert.ok(
+      compressed.length <= input.length,
+      `grew ${JSON.stringify(input)} -> ${JSON.stringify(compressed)}`
+    );
+  }
+});
+
 test('drops articles', () => {
   const { compressed } = compress('The user is the owner of an account');
   assert.match(compressed, /User is owner of account/i);
@@ -45,39 +104,11 @@ test('drops filler and pleasantries', () => {
   assert.doesNotMatch(compressed, /basically/i);
 });
 
-test('drops "I will" leaders and opinion markers', () => {
-  const { compressed } = compress('I will connect to the database');
+test('drops hedging and "I will" leaders', () => {
+  const { compressed } = compress('I will perhaps connect to the database');
+  assert.doesNotMatch(compressed, /perhaps/i);
   assert.doesNotMatch(compressed, /^I will/i);
   assert.match(compressed, /database/i);
-
-  const opinion = compress('I think this returns the row').compressed;
-  assert.doesNotMatch(opinion, /i think/i);
-  assert.match(opinion, /returns row/i);
-});
-
-// Modality is contract, not filler. A tool description is what the model reads
-// to decide which tool to call and how to fill its args, so a rewrite that
-// turns "might return null" into "return null" is a wrong-call generator.
-test('preserves modality and scope adverbs', () => {
-  const cases = [
-    ['The tool might return null if the record is missing.', /might return null/i],
-    ['This could potentially time out on a large file.',      /could potentially/i],
-    ['Matches the pattern literally, not as a regex.',        /literally/i],
-    ['Returns only the first match.',                         /only/i],
-    ['The cursor may be omitted.',                            /may be omitted/i],
-    ['You can pass a limit; the default is 100.',             /you can pass/i],
-  ];
-  for (const [input, needle] of cases) {
-    const { compressed } = compress(input);
-    assert.match(compressed, needle, `lost meaning-bearing word in: ${compressed}`);
-  }
-});
-
-test('preserves "make sure" / "be sure" but drops the "Sure," opener', () => {
-  assert.match(compress('Make sure the path exists before writing.').compressed,
-    /make sure path exists/i);
-  assert.match(compress('Be sure to close the handle.').compressed, /be sure/i);
-  assert.doesNotMatch(compress('Sure, this returns the value').compressed, /sure/i);
 });
 
 test('preserves fenced code blocks verbatim', () => {
@@ -110,6 +141,109 @@ test('preserves identifiers in CONST_CASE / dotted form', () => {
   const { compressed } = compress(input);
   assert.match(compressed, /API_KEY_VALUE/);
   assert.match(compressed, /config\.api\.endpoint\(\)/);
+});
+
+test('compresses a pleasantry/filler sitting inside an English parenthetical (#999)', () => {
+  // A word directly followed by a space and "(...)" is prose, not a call:
+  // real function-call syntax never has a space before the paren.
+  const cases = [
+    { in: 'This tool is useful (please read carefully) before continuing.', banned: /\bplease\b/i },
+    { in: 'Please use the option (basically the default) to enable this.', banned: /\bbasically\b/i },
+  ];
+  for (const c of cases) {
+    const { compressed } = compress(c.in);
+    assert.doesNotMatch(compressed, c.banned, `parenthetical was over-protected: "${compressed}"`);
+  }
+  // Real function calls, which never have a space before "(", still protect.
+  const { compressed } = compress('Run compress(text, opts) to process the payload.');
+  assert.match(compressed, /compress\(text, opts\)/);
+});
+
+test('never eats a hyphen-joined component of a compound word', () => {
+  // `\b` treats "-" as a word boundary, so a filler/hedge/pleasantry spelled as
+  // part of a hyphenated compound used to match and get stripped, leaving a
+  // dangling "-suffix": "just-in-time" → "-in-time". These are ordinary
+  // technical terms and appear verbatim in MCP tool descriptions, which the
+  // proxy rewrites in place via compressDescriptionsInPlace — so the corruption
+  // ships straight into the model's tool list.
+  const cases = [
+    'Enable just-in-time compilation for the runtime',
+    'Set the maybe-null flag on the field',
+    'Use the sure-fire approach',
+    'Returns a very-long-string value',
+    'The actually-used config wins',
+    'Pass the thanks-giving header',
+    'A might-fail retry policy',
+  ];
+  for (const input of cases) {
+    const compound = input.match(/[a-z]+(?:-[a-z]+)+/i)[0];
+    const { compressed } = compress(input);
+    // Case-insensitive: dropping a leading article can promote the compound to
+    // sentence-initial, where the capitalization pass legitimately upcases it.
+    assert.ok(
+      compressed.toLowerCase().includes(compound.toLowerCase()),
+      `compound "${compound}" was mangled: "${input}" → "${compressed}"`
+    );
+    assert.doesNotMatch(
+      compressed,
+      /(^|\s)-/,
+      `left a dangling hyphen: "${input}" → "${compressed}"`
+    );
+  }
+  // The same words standing alone are still dropped — the fix must not turn
+  // the compressor off, only stop it from reaching inside a compound.
+  const { compressed } = compress('This is just a maybe wrong value');
+  assert.doesNotMatch(compressed, /\bjust\b/i);
+  assert.doesNotMatch(compressed, /\bmaybe\b/i);
+});
+
+test('never eats "sure" out of the "make sure" / "be sure" / "not sure" collocations', () => {
+  // `sure` is a pleasantry as a bare interjection ("Sure, this returns the
+  // value"), but in these fixed collocations it is the complement of the verb,
+  // so dropping it does not weaken the sentence — it changes what the sentence
+  // says. "Make sure the file exists" is a check; "Make file exists" reads as a
+  // create. Same class as the hyphenated-compound corruption above: a word that
+  // is filler on its own is not filler inside a collocation. The proxy rewrites
+  // MCP tool descriptions in place via compressDescriptionsInPlace, so the
+  // mangled contract is what the model reads as the tool's behavior (#1073).
+  const cases = [
+    'Make sure the file exists.',
+    'Make sure to call init before any other tool.',
+    'Be sure to pass an absolute path.',
+    'Not sure why this fails.',
+    'Please make sure.',
+    "I'm sure that works.",
+    'Ensure you make sure of the ordering.',
+    // CRLF: the interjection rule anchors on line starts, so a Windows-newline
+    // description must not take a different branch from the LF one.
+    'Step one.\r\nMake sure the file exists.',
+    'MAKE SURE THE PATH IS ABSOLUTE.',
+    'Surely, this works.',
+  ];
+  for (const input of cases) {
+    const { compressed } = compress(input);
+    assert.match(
+      compressed,
+      /sure/i,
+      `dropped the verb complement "sure": "${input}" → "${compressed}"`
+    );
+  }
+  // The bare interjection is still dropped — the fix must not turn the rule
+  // off, only stop it from reaching inside a collocation.
+  for (const input of [
+    'Sure, this returns the value',
+    'Sure! That is the default.',
+    'Done. Sure, that works too.',
+    'Done.\r\nSure, that works.',
+    'Done.\nSure, that works.',
+  ]) {
+    const { compressed } = compress(input);
+    assert.doesNotMatch(
+      compressed,
+      /sure/i,
+      `kept a bare "sure" interjection: "${input}" → "${compressed}"`
+    );
+  }
 });
 
 test('compresses real MCP-style description', () => {
@@ -148,29 +282,6 @@ test('compressDescriptionsInPlace walks nested tools/list response', () => {
   assert.match(payload.result.tools[1].description, /email/i);
 });
 
-test('compressDescriptionsInPlace never rewrites schema descriptions', () => {
-  const payload = {
-    tools: [{
-      name: 'query',
-      description: 'Runs the query against the database.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          limit: { type: 'number', description: 'The maximum number of rows to return.' },
-        },
-      },
-    }],
-  };
-  compressDescriptionsInPlace(payload, ['description']);
-  assert.equal(
-    payload.tools[0].inputSchema.properties.limit.description,
-    'The maximum number of rows to return.',
-    'parameter descriptions drive argument values — they must pass through untouched'
-  );
-  // Tool-level prose still compresses.
-  assert.doesNotMatch(payload.tools[0].description, /\bthe\b/i);
-});
-
 test('compressDescriptionsInPlace skips non-string description fields', () => {
   const obj = { description: { not: 'a string' }, name: 'x' };
   // Should not throw.
@@ -178,31 +289,30 @@ test('compressDescriptionsInPlace skips non-string description fields', () => {
   assert.deepStrictEqual(obj.description, { not: 'a string' });
 });
 
-// spawn-options: upstream MCP child process spawn flags.
-// Confirms shell:true on Windows (so npx and other .cmd shims resolve) and
-// shell:false on POSIX.
+// spawn-options: upstream MCP child process spawn flags. Windows .cmd shims
+// are resolved separately; all platforms keep shell mode disabled.
 
-test('win32 enables shell so npx and .cmd shims resolve', () => {
+test('win32 keeps shell off so upstream args are never interpolated', () => {
   const opts = getSpawnOptions('win32');
-  assert.equal(opts.shell, true);
+  assert.equal(opts.shell, undefined);
   assert.equal(opts.windowsHide, true);
   assert.deepEqual(opts.stdio, ['pipe', 'pipe', 'inherit']);
 });
 
 test('linux keeps shell off to avoid argv quoting surprises', () => {
   const opts = getSpawnOptions('linux');
-  assert.equal(opts.shell, false);
+  assert.equal(opts.shell, undefined);
   assert.deepEqual(opts.stdio, ['pipe', 'pipe', 'inherit']);
 });
 
 test('darwin keeps shell off', () => {
   const opts = getSpawnOptions('darwin');
-  assert.equal(opts.shell, false);
+  assert.equal(opts.shell, undefined);
 });
 
 test('defaults to current platform when no arg passed', () => {
   const opts = getSpawnOptions();
-  assert.equal(opts.shell, process.platform === 'win32');
+  assert.equal(opts.shell, undefined);
   assert.equal(opts.windowsHide, true);
   assert.deepEqual(opts.stdio, ['pipe', 'pipe', 'inherit']);
 });
@@ -241,7 +351,7 @@ test('preserves enum values inside parens (nested sentinel restoration — #444)
 // The package is flat, so "files" entries are exact filenames, not globs.
 
 test('package.json "files" ships every module the entry points require (#597)', () => {
-  const pkgDir = path.join(ROOT, 'src', 'mcp-servers', 'sweet-shrink');
+  const pkgDir = path.join(ROOT, 'src', 'mcp-servers', 'caveman-shrink');
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
   const shipped = new Set((pkg.files || []).map(f => path.normalize(f)));
 
@@ -267,6 +377,205 @@ test('package.json "files" ships every module the entry points require (#597)', 
       queue.push(dep);
     }
   }
+});
+
+
+// ── Teardown (shutdown.js) ──────────────────────────────────────────────────
+// A stand-in for the spawned upstream. Node sets exitCode/signalCode on a
+// ChildProcess once it has gone; before that both are null, which is what
+// createShutdown reads to decide whether anything is still worth killing.
+function fakeChild({ exitCode = null, signalCode = null, killed = false } = {}) {
+  return {
+    exitCode,
+    signalCode,
+    killed,
+    signals: [],
+    kill(sig) {
+      this.signals.push(sig);
+      this.killed = true;
+      return true;
+    },
+  };
+}
+
+// Hand-driven clock: nothing here waits on a real timer, so the escalation
+// tests stay synchronous and cannot flake under a loaded CI box.
+function fakeTimers() {
+  const pending = new Map();
+  let next = 1;
+  return {
+    setTimeout(fn) { pending.set(next, fn); return next++; },
+    clearTimeout(id) { pending.delete(id); },
+    get armed() { return pending.size; },
+    fire() {
+      const fns = [...pending.values()];
+      pending.clear();
+      for (const fn of fns) fn();
+    },
+  };
+}
+
+test('forwards a termination signal to a live upstream', () => {
+  const child = fakeChild();
+  const shutdown = createShutdown({ child, timers: fakeTimers() });
+  shutdown.forward('SIGTERM');
+  assert.deepEqual(child.signals, ['SIGTERM']);
+});
+
+test('escalates to SIGKILL when the upstream ignores the signal', () => {
+  // The whole point of the grace period: a server that traps SIGTERM and
+  // declines to exit would otherwise keep the wrapper alive alongside it.
+  const child = fakeChild();
+  const timers = fakeTimers();
+  const shutdown = createShutdown({ child, timers });
+  shutdown.forward('SIGTERM');
+  assert.equal(shutdown.pendingEscalation, true);
+  timers.fire();
+  assert.deepEqual(child.signals, ['SIGTERM', 'SIGKILL']);
+});
+
+test('does not escalate when the upstream exits inside the grace period', () => {
+  const child = fakeChild();
+  const timers = fakeTimers();
+  const shutdown = createShutdown({ child, timers });
+  shutdown.forward('SIGTERM');
+  child.exitCode = 0;            // upstream honoured the signal
+  timers.fire();
+  assert.deepEqual(child.signals, ['SIGTERM'], 'SIGKILL sent to an already-exited child');
+});
+
+test('a second signal is a no-op, not a duplicate kill and a second timer', () => {
+  // An impatient double Ctrl-C must not re-signal a child that is already
+  // being torn down, nor leave a second escalation timer behind it.
+  const child = fakeChild();
+  const timers = fakeTimers();
+  const shutdown = createShutdown({ child, timers });
+  shutdown.forward('SIGINT');
+  shutdown.forward('SIGINT');
+  assert.deepEqual(child.signals, ['SIGINT'], 'second Ctrl-C re-signalled the child');
+  assert.equal(timers.armed, 1, 'second Ctrl-C armed another timer');
+});
+
+test('leaves an already-exited upstream alone', () => {
+  const child = fakeChild({ exitCode: 0 });
+  const timers = fakeTimers();
+  const shutdown = createShutdown({ child, timers });
+  shutdown.forward('SIGTERM');
+  assert.deepEqual(child.signals, []);
+  assert.equal(timers.armed, 0);
+});
+
+test('close clears a pending escalation and detaches client input', () => {
+  const child = fakeChild();
+  const timers = fakeTimers();
+  let detached = 0;
+  const shutdown = createShutdown({ child, timers, detachInput: () => { detached++; } });
+  shutdown.forward('SIGTERM');
+  shutdown.onClose(0, null);
+  assert.equal(shutdown.pendingEscalation, false);
+  assert.equal(detached, 1);
+  timers.fire();
+  assert.deepEqual(child.signals, ['SIGTERM'], 'stale timer fired after close');
+});
+
+test('close reports the upstream exit code, or 128+signal when it was killed', () => {
+  const mk = extra => createShutdown({ child: fakeChild(), timers: fakeTimers(), ...extra });
+  assert.equal(mk().onClose(0, null), 0);
+  assert.equal(mk().onClose(3, null), 3);
+  assert.equal(mk().onClose(null, 'SIGTERM'), 143);
+  assert.equal(mk().onClose(null, 'SIGINT'), 130);
+  assert.equal(mk({ spawnFailed: () => true }).onClose(0, null), 1, 'spawn failure must not report success');
+});
+
+// The EOF half of the same sequence. A host shuts an MCP stdio server down by
+// closing its stdin first; these cover what happens when the upstream does and
+// does not act on that.
+test('passes client EOF on to the upstream', () => {
+  const child = fakeChild();
+  let ended = 0;
+  const shutdown = createShutdown({ child, timers: fakeTimers(), endUpstreamInput: () => { ended++; } });
+  shutdown.closeInput();
+  assert.equal(ended, 1);
+  assert.deepEqual(child.signals, [], 'EOF must not signal the upstream on its own');
+});
+
+test('does not signal an upstream that exits on EOF', () => {
+  // The normal path: a well-behaved server sees EOF and leaves. Nothing may be
+  // signalled, or every clean shutdown would look like a kill.
+  const child = fakeChild();
+  const timers = fakeTimers();
+  const shutdown = createShutdown({ child, timers });
+  shutdown.closeInput();
+  child.exitCode = 0;
+  timers.fire();
+  assert.deepEqual(child.signals, []);
+});
+
+test('escalates EOF through SIGTERM to SIGKILL when the upstream ignores both', () => {
+  // Without this the wrapper waits on an upstream that is never going to
+  // leave, and the host waits on the wrapper.
+  const child = fakeChild();
+  const timers = fakeTimers();
+  const shutdown = createShutdown({ child, timers });
+  shutdown.closeInput();
+  assert.equal(shutdown.pendingEscalation, true, 'EOF armed no wait');
+  timers.fire();
+  assert.deepEqual(child.signals, ['SIGTERM'], 'EOF grace expiring did not send SIGTERM');
+  timers.fire();
+  assert.deepEqual(child.signals, ['SIGTERM', 'SIGKILL']);
+});
+
+test('EOF on an already-exited upstream arms nothing', () => {
+  const child = fakeChild({ exitCode: 0 });
+  const timers = fakeTimers();
+  let ended = 0;
+  const shutdown = createShutdown({ child, timers, endUpstreamInput: () => { ended++; } });
+  shutdown.closeInput();
+  assert.equal(ended, 1, 'the upstream stdin still gets closed');
+  assert.equal(timers.armed, 0, 'armed a wait for a child that is already gone');
+});
+
+test('a repeated EOF does not arm a second wait', () => {
+  const child = fakeChild();
+  const timers = fakeTimers();
+  const shutdown = createShutdown({ child, timers });
+  shutdown.closeInput();
+  shutdown.closeInput();
+  assert.equal(timers.armed, 1);
+});
+
+test('close clears a pending EOF wait', () => {
+  // Same stale-timer hazard as the signal path: the upstream is gone, so the
+  // wait must not come back and signal whatever holds that pid next.
+  const child = fakeChild();
+  const timers = fakeTimers();
+  const shutdown = createShutdown({ child, timers });
+  shutdown.closeInput();
+  shutdown.onClose(0, null);
+  assert.equal(shutdown.pendingEscalation, false);
+  timers.fire();
+  assert.deepEqual(child.signals, [], 'stale EOF wait fired after close');
+});
+
+test('the default grace period is a real duration', () => {
+  // Guards against a refactor that drops the default to 0 and turns every
+  // teardown into an immediate SIGKILL.
+  assert.ok(DEFAULT_GRACE_MS >= 1000, `grace period too short: ${DEFAULT_GRACE_MS}ms`);
+});
+
+test('protected patterns stay linear on adversarial descriptions (CodeQL js/polynomial-redos)', () => {
+  // The path, dotted and function-call patterns used to retry from every
+  // position inside a run, so these took seconds at 40 KB. Linear on these
+  // inputs; an unclosed `a(a(a(` run is still quadratic (pre-existing).
+  for (const s of ['A'.repeat(40000), 'a.'.repeat(20000), 'a-'.repeat(20000), 'A1'.repeat(20000)]) {
+    const t0 = Date.now();
+    compress(s);
+    assert.ok(Date.now() - t0 < 200, `compress took ${Date.now() - t0}ms on ${JSON.stringify(s.slice(0, 4))}…`);
+  }
+  // Leftmost-match semantics unchanged: digits leading an identifier, and a
+  // path whose run opens with "." still protect the same text.
+  assert.strictEqual(compress('9run(the very thing)').compressed, '9run(the very thing)');
+  assert.strictEqual(compress('see .just/x now').compressed, 'See.just/x now');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

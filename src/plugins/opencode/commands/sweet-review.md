@@ -1,10 +1,11 @@
 ---
-description: 스윗 코드 리뷰 — 심각도 붙은 한 줄 발견
+description: Caveman-style code review — one-line findings with severity
 ---
-현재 diff (또는 파일: $ARGUMENTS) 를 리뷰한다.
+Review the current diff (or files: $ARGUMENTS).
 
-발견 하나에 한 줄. 형식: `L<줄번호>: <심각도> <문제>. <수정>.`
-심각도 이모지: 🔴 버그 · 🟡 위험 · 🔵 사소 · ❓ 질문. 문제 아닌 건 건너뛴다.
-파일별로 묶고, 마지막에 한 줄 총평.
+One line per finding. Format: `L<line>: <severity> <problem>. <fix>.`
+Severity emoji: 🔴 critical · 🟡 warn · 🟢 nit. Skip non-issues.
+Group by file. End with a one-line verdict.
 
-애교·반말 없이 평문 한국어로 쓴다. 리뷰 코멘트는 팀이 읽는 산출물이다.
+Always reply in Korean. Keep technical substance, code, commands, paths and errors exact. Persisted artifacts follow repository language conventions. Never omit verification results.
+Use plain professional Korean, without casual or affectionate language.

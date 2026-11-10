@@ -1,19 +1,23 @@
-// Regression for #470 + #571: /sweet-* reports 'Unknown command' in Claude Code.
+// Regression for #470 + #571: /caveman-* reports 'Unknown command' in Claude Code.
 //
-// Claude Code resolves a slash command by scanning commands/*.md (YAML
-// frontmatter) BEFORE the UserPromptSubmit hook ever sees the prompt — it
-// ignores commands/*.toml entirely (#571; TOML is the Gemini extension
-// format). With no commands/<name>.md on disk, the chat input is rejected as
-// "Unknown command" — the mode tracker's handlers in
-// src/hooks/sweet-mode-tracker.js never get a chance to intercept.
-//
-// README.md and INSTALL.md advertise the /sweet-* slash commands, so every
-// documented command MUST ship BOTH formats:
-//   commands/<name>.md    — Claude Code plugin commands (#571)
+// README.md and INSTALL.md advertise the /caveman-* slash commands, so each one
+// must actually resolve in Claude Code and Gemini:
 //   commands/<name>.toml  — Gemini CLI extension commands (#470)
-// This test pins that contract, plus checks the sweet-stats bodies actually
-// trigger the hook regex (a description-only stub would still leave the
-// feature broken).
+//   skills/<name>/SKILL.md OR commands/<name>.md — Claude Code (#571)
+//
+// The Claude Code half is an EXCLUSIVE or. Claude Code loads commands/*.md as
+// flat skills in the same namespace as skills/*/SKILL.md, so shipping both for
+// one name registers it twice — `claude plugin details` listed `caveman`,
+// `caveman-commit`, `caveman-review` and `caveman-stats` twice each, with a
+// 3-line stub competing against the real ruleset for the same slash command.
+// #571 predates skills/ being auto-discovered from the plugin root; the stubs
+// were the only registration then and are pure duplication now.
+//
+// Deleting a stub does NOT break hook interception. Verified against Claude
+// Code 2.1.235 with a UserPromptSubmit hook that logs its stdin: invoking a
+// plugin skill delivers the RAW typed prompt ("/probe:probeskill"), not the
+// expanded body. So the mode tracker matches what the user typed, and a stub
+// body that re-emitted the command text was never the mechanism.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,61 +28,65 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const COMMANDS_DIR = path.join(REPO_ROOT, 'commands');
-const STATS_TOML = path.join(COMMANDS_DIR, 'sweet-stats.toml');
+const STATS_TOML = path.join(COMMANDS_DIR, 'caveman-stats.toml');
 
-// Mirrors the live regex in src/hooks/sweet-mode-tracker.js (the
+// Mirrors the live regex in src/hooks/caveman-mode-tracker.js (the
 // `statsMatch` line). Anything that fails this here would also fail in
 // production, so the test stays representative if the hook regex shifts.
-const HOOK_STATS_REGEX = /^\/sweet(?::sweet)?-stats(?:\s+(.*))?$/m;
+const HOOK_STATS_REGEX = /^\/caveman(?::caveman)?-stats(?:\s+(.*))?$/m;
 
-test('#470 commands/sweet-stats.toml exists so Claude Code registers /sweet-stats', () => {
+test('#470 commands/caveman-stats.toml registers the Gemini extension command', () => {
   assert.ok(
     fs.existsSync(STATS_TOML),
-    `Missing ${path.relative(REPO_ROOT, STATS_TOML)} — Claude Code rejects /sweet-stats as "Unknown command" before the UserPromptSubmit hook can intercept (issue #470).`,
+    `Missing ${path.relative(REPO_ROOT, STATS_TOML)} — Gemini CLI cannot discover this extension command (issue #470).`,
   );
 });
 
-test('#470 sweet-stats.toml declares a non-empty description for the slash-command picker', () => {
+test('#470 caveman-stats.toml declares a non-empty description for the slash-command picker', () => {
   const body = fs.readFileSync(STATS_TOML, 'utf8');
   const descMatch = body.match(/^\s*description\s*=\s*"([^"\n]+)"/m);
-  assert.ok(descMatch, 'sweet-stats.toml must declare a description = "..." line');
+  assert.ok(descMatch, 'caveman-stats.toml must declare a description = "..." line');
   assert.ok(descMatch[1].trim().length > 0, 'description must not be empty');
 });
 
-test('#470 sweet-stats.toml prompt is intercepted by the mode-tracker regex', () => {
+test('#403 Gemini stats command uses native host statistics without entering the Claude hook path', () => {
   const body = fs.readFileSync(STATS_TOML, 'utf8');
   const promptMatch = body.match(/^\s*prompt\s*=\s*"([^"\n]+)"/m);
-  assert.ok(promptMatch, 'sweet-stats.toml must declare a prompt = "..." line');
+  assert.ok(promptMatch, 'caveman-stats.toml must declare a prompt = "..." line');
   const prompt = promptMatch[1].replace(/\{\{args\}\}/g, '').trim();
-  assert.match(
-    prompt,
-    HOOK_STATS_REGEX,
-    `Resolved prompt ${JSON.stringify(prompt)} must match the UserPromptSubmit handler regex in src/hooks/sweet-mode-tracker.js; otherwise the stats output is never injected.`,
-  );
+  assert.match(prompt, /\/stats model/);
+  assert.match(prompt, /\/stats session/);
+  assert.match(prompt, /cannot invoke a built-in slash command or access the host's live metrics/);
+  assert.match(prompt, /Do not run the Claude Code caveman-stats reader/);
+  assert.match(prompt, /savings are unknown/);
+  assert.doesNotMatch(prompt, HOOK_STATS_REGEX);
 });
 
 // ── #571: Claude Code only discovers commands/*.md ─────────────────────────
 
-// Every command documented for Claude Code. Each needs a .md (Claude Code)
-// AND a .toml (Gemini extension) sibling — the formats coexist in commands/.
-const DOCUMENTED_COMMANDS = ['sweet', 'sweet-commit', 'sweet-review', 'sweet-stats', 'sweet-init'];
+// Every command documented for Claude Code. Each needs a .toml (Gemini
+// extension) plus exactly one Claude Code provider — a skill directory or a
+// flat command .md, never both.
+const DOCUMENTED_COMMANDS = ['caveman', 'caveman-commit', 'caveman-review', 'caveman-stats', 'caveman-init'];
+const SKILLS_DIR = path.join(REPO_ROOT, 'skills');
 
 for (const name of DOCUMENTED_COMMANDS) {
-  test(`#571 commands/${name}.md exists so Claude Code registers /${name}`, () => {
+  test(`#571 /${name} is registered in Claude Code exactly once`, () => {
+    const skillPath = path.join(SKILLS_DIR, name, 'SKILL.md');
     const mdPath = path.join(COMMANDS_DIR, `${name}.md`);
+    const providers = [
+      fs.existsSync(skillPath) && path.relative(REPO_ROOT, skillPath),
+      fs.existsSync(mdPath) && path.relative(REPO_ROOT, mdPath),
+    ].filter(Boolean);
     assert.ok(
-      fs.existsSync(mdPath),
-      `Missing ${path.relative(REPO_ROOT, mdPath)} — Claude Code only scans commands/*.md, so /${name} is "Unknown command" without it (issue #571).`,
+      providers.length > 0,
+      `Nothing registers /${name} for Claude Code — add skills/${name}/SKILL.md or commands/${name}.md, or the chat input is rejected as "Unknown command" (issue #571).`,
     );
-  });
-
-  test(`#571 commands/${name}.md has YAML frontmatter with a non-empty description`, () => {
-    const body = fs.readFileSync(path.join(COMMANDS_DIR, `${name}.md`), 'utf8');
-    assert.ok(body.startsWith('---\n'), `${name}.md must start with YAML frontmatter (---)`);
-    const fm = body.match(/^---\n([\s\S]*?)\n---/);
-    assert.ok(fm, `${name}.md frontmatter must be closed with ---`);
-    const desc = fm[1].match(/^description:\s*(.+)$/m);
-    assert.ok(desc && desc[1].trim().length > 0, `${name}.md must declare a non-empty description`);
+    assert.equal(
+      providers.length,
+      1,
+      `/${name} is registered twice (${providers.join(' and ')}). Claude Code loads commands/*.md as flat skills in the same namespace as skills/*/SKILL.md, so the slash command is ambiguous — drop the stub.`,
+    );
   });
 
   test(`#571 commands/${name}.toml still ships for Gemini`, () => {
@@ -89,42 +97,49 @@ for (const name of DOCUMENTED_COMMANDS) {
   });
 }
 
-test('#571 sweet-stats.md body is intercepted by the mode-tracker regex', () => {
-  const body = fs.readFileSync(path.join(COMMANDS_DIR, 'sweet-stats.md'), 'utf8');
-  const prompt = body.replace(/^---\n[\s\S]*?\n---\n/, '').replace(/\$ARGUMENTS/g, '').trim();
-  assert.match(
-    prompt,
-    HOOK_STATS_REGEX,
-    `Resolved body ${JSON.stringify(prompt)} must match the UserPromptSubmit handler regex in src/hooks/sweet-mode-tracker.js; otherwise the stats output is never injected.`,
-  );
+// The stub bodies used to be checked against this regex on the theory that
+// Claude Code expanded them before the hook ran. It does not — UserPromptSubmit
+// receives the raw text the user typed (verified on 2.1.235), in both the bare
+// and plugin-namespaced forms. That is what the handler must match.
+test('#571 mode tracker intercepts /caveman-stats as typed, bare and namespaced', () => {
+  for (const typed of ['/caveman-stats', '/caveman-stats --share', '/caveman:caveman-stats']) {
+    assert.match(
+      typed,
+      HOOK_STATS_REGEX,
+      `The UserPromptSubmit handler regex in src/hooks/caveman-mode-tracker.js must match ${JSON.stringify(typed)}; otherwise the stats output is never injected.`,
+    );
+  }
 });
 
 test('#571 command .md bodies use $ARGUMENTS, never the TOML {{args}} placeholder', () => {
-  for (const name of DOCUMENTED_COMMANDS) {
-    const body = fs.readFileSync(path.join(COMMANDS_DIR, `${name}.md`), 'utf8');
+  for (const mdPath of fs.readdirSync(COMMANDS_DIR).filter(f => f.endsWith('.md'))) {
+    const body = fs.readFileSync(path.join(COMMANDS_DIR, mdPath), 'utf8');
+    assert.ok(body.startsWith('---\n'), `${mdPath} must start with YAML frontmatter (---)`);
+    const fm = body.match(/^---\n([\s\S]*?)\n---/);
+    assert.ok(fm, `${mdPath} frontmatter must be closed with ---`);
+    const desc = fm[1].match(/^description:\s*(.+)$/m);
+    assert.ok(desc && desc[1].trim().length > 0, `${mdPath} must declare a non-empty description`);
     assert.ok(
       !body.includes('{{args}}'),
-      `commands/${name}.md contains {{args}} — Claude Code substitutes $ARGUMENTS, {{args}} would reach the model verbatim.`,
+      `commands/${mdPath} contains {{args}} — Claude Code substitutes $ARGUMENTS, {{args}} would reach the model verbatim.`,
     );
   }
 });
 
 // #603: the init command must not depend on a repo-relative path — installed
 // users run it from their own project, where src/tools/ does not exist.
-test('#603 sweet-init command bodies do not run src/tools blindly', () => {
+test('#603 caveman-init command bodies do not run src/tools blindly', () => {
   for (const ext of ['md', 'toml']) {
-    const body = fs.readFileSync(path.join(COMMANDS_DIR, `sweet-init.${ext}`), 'utf8');
-    if (body.includes('src/tools/sweet-init.js')) {
+    const body = fs.readFileSync(path.join(COMMANDS_DIR, `caveman-init.${ext}`), 'utf8');
+    if (body.includes('src/tools/caveman-init.js')) {
       assert.ok(
-        /raw\.githubusercontent\.com.*sweet-init\.js/.test(body),
-        `commands/sweet-init.${ext} references the repo-relative src/tools path without a standalone fallback (curl | node) — fails for every installed user (issue #603).`,
+        /raw\.githubusercontent\.com.*caveman-init\.js/.test(body),
+        `commands/caveman-init.${ext} references the repo-relative src/tools path without a standalone fallback (curl | node) — fails for every installed user (issue #603).`,
       );
       assert.match(
         body,
-        // English or Korean gate — "…가 있으면" / "…이 존재하면" are the
-        // Korean equivalents of "if <path> exists".
-        /if .*exists|exists in the current repo|가 있으면|이 있으면|존재하면/i,
-        `commands/sweet-init.${ext} must gate the repo-relative path on the file actually existing (issue #603).`,
+        /if .*exists|exists in the current repo/i,
+        `commands/caveman-init.${ext} must gate the repo-relative path on the file actually existing (issue #603).`,
       );
     }
   }

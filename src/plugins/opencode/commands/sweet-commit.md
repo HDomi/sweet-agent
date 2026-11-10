@@ -1,10 +1,11 @@
 ---
-description: 스테이징된 변경에 대한 짧은 한국어 커밋 메시지 생성
+description: Generate a terse caveman-style commit message for staged changes
 ---
-스테이징된 변경에 대한 커밋 메시지를 만든다.
+Generate a commit message for the current staged changes.
 
-Conventional Commits 형식. 제목 50자 이내, 개조식 종결, 타입(feat/fix/...)은 영문
-원문 그대로. 제목 끝에 마침표 없음. 본문은 제목만으로 "왜"가 자명하지 않을 때만 —
-무엇이 아니라 왜를 설명한다. 군더더기·완충 표현·부풀리기 버린다.
+Conventional Commits format. Subject line ≤50 chars, imperative, lowercase
+after the type. No period on subject. Body only when the "why" isn't obvious
+from the subject — explain why over what. Drop filler, hedging, padding.
 
-애교·반말 없이 평문 한국어로 쓴다. 커밋 메시지는 산출물이다.
+Always reply in Korean. Keep technical substance, code, commands, paths and errors exact. Persisted artifacts follow repository language conventions. Never omit verification results.
+Use plain professional Korean, without casual or affectionate language.

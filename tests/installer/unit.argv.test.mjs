@@ -1,20 +1,29 @@
-// Unit tests for the argv parser embedded in bin/install.js.
+// Unit tests for the argv parser embedded in installer/install.js.
 // We don't import parseArgs (it's not exported) — instead we shell out to the
 // installer with --help / --list / unknown flags and assert the framing.
 // For deeper coverage of flag-resolution semantics, exec --dry-run --list and
 // check the rendered defaults.
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isolatedEnv } from './_isolated-env.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const INSTALLER = path.resolve(HERE, '..', '..', 'bin', 'install.js');
+const INSTALLER = path.resolve(HERE, '..', '..', 'installer', 'install.js');
+const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'cm-argv-'));
+after(() => fs.rmSync(HOME, { recursive: true, force: true }));
+const CLEAN_ENV = { ...isolatedEnv(HOME), PATH: path.join(HERE, '__no_commands__') };
 
 function run(...args) {
-  return spawnSync('node', [INSTALLER, ...args], { encoding: 'utf8' });
+  return spawnSync(process.execPath, [INSTALLER, ...args], {
+    encoding: 'utf8',
+    env: CLEAN_ENV,
+  });
 }
 
 test('--help prints usage and exits 0', () => {
@@ -27,7 +36,7 @@ test('--help prints usage and exits 0', () => {
 test('--list prints provider matrix', () => {
   const r = run('--list');
   assert.equal(r.status, 0);
-  assert.match(r.stdout, /sweet provider matrix/);
+  assert.match(r.stdout, /Sweet Agent provider matrix/);
   assert.match(r.stdout, /claude\b/);
   assert.match(r.stdout, /gemini\b/);
   assert.match(r.stdout, /antigravity\b.*\(soft\)/);
@@ -73,7 +82,16 @@ test('--only with unknown agent id exits 2', () => {
   const r = run('--only', 'definitely-not-an-agent', '--non-interactive');
   assert.equal(r.status, 2);
   assert.match(r.stderr, /unknown agent: definitely-not-an-agent/);
-  assert.match(r.stderr, /sweet --list/);
+  assert.match(r.stderr, /caveman --list/);
+});
+
+// Uninstall has no per-agent mode. Silently ignoring --only removed caveman
+// from every agent when the user asked for one. --dry-run keeps the pre-fix
+// run a plan.
+test('--uninstall with --only exits 2 instead of removing every agent', () => {
+  const r = run('--uninstall', '--only', 'codex', '--dry-run', '--non-interactive');
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /--uninstall.*--only/);
 });
 
 test('--only known id passes argv validation', () => {
@@ -89,7 +107,7 @@ test('--config-dir expands ~ to home directory', async () => {
   // --with-hooks: since #392/#393 the hooks plan (which echoes the resolved
   // config-dir) is only emitted when the plugin install fails OR hooks are
   // forced. Force it so the path-expansion assertion below has something to
-  // match even when the sweet plugin is already installed.
+  // match even when the caveman plugin is already installed.
   const r = run('--dry-run', '--only', 'claude', '--with-hooks', '--non-interactive', '--config-dir', `~/${suffix}`);
   assert.equal(r.status, 0);
   // If the literal `~` had survived, we'd see `~/cm-test-…/hooks` in the plan.
@@ -98,8 +116,7 @@ test('--config-dir expands ~ to home directory', async () => {
   // The plan only includes the hooks dir if claude is detected. Skip the
   // positive assertion when claude isn't on PATH on the runner.
   if (/Claude Code detected/.test(r.stdout)) {
-    const { homedir } = await import('node:os');
-    assert.match(r.stdout, new RegExp(homedir().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/' + suffix));
+    assert.match(r.stdout, new RegExp(HOME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\\\/]' + suffix));
   }
 });
 
@@ -112,7 +129,7 @@ test('bare -- (POSIX end-of-options) is accepted and ignored', () => {
 
 test('bare --with-mcp-shrink (no upstream) exits 2 with hint', () => {
   // Regression for issue where --with-mcp-shrink registered a stub MCP entry
-  // that crashed on every Claude Code startup. sweet-shrink is a proxy and
+  // that crashed on every Claude Code startup. caveman-shrink is a proxy and
   // requires an upstream command — we now refuse the bare flag (#474).
   const r = run('--with-mcp-shrink', '--non-interactive', '--dry-run');
   assert.equal(r.status, 2);
@@ -139,12 +156,8 @@ test('--with-mcp-shrink="<cmd>" registers wrapping that upstream', () => {
   // Dry-run only emits the planned `claude mcp add` line when claude is on
   // PATH (installMcpShrink probes `claude mcp --help` first). Assert the
   // wrapping content only when that line is actually present.
-  if (/would run: claude mcp add sweet-shrink/.test(r.stdout)) {
-    // Must resolve the LOCAL entry point, never `npx -y sweet-shrink` — that
-    // npm name is unpublished and unowned, so resolving it would run whoever
-    // claims it as an MCP proxy in front of a real server.
-    assert.match(r.stdout, /claude mcp add sweet-shrink .*src\/mcp-servers\/sweet-shrink\/index\.js npx @modelcontextprotocol\/server-filesystem \/tmp/);
-    assert.doesNotMatch(r.stdout, /npx -y sweet-shrink/);
+  if (/would run: claude mcp add caveman-shrink/.test(r.stdout)) {
+    assert.match(r.stdout, /claude mcp add caveman-shrink .* npx -y caveman-shrink npx @modelcontextprotocol\/server-filesystem \/tmp/);
   }
 });
 
@@ -155,9 +168,8 @@ test('--with-mcp-shrink "<cmd>" (space-separated) also accepted', () => {
     '--config-dir', '/tmp/__cm_shrink_space'
   );
   assert.equal(r.status, 0);
-  if (/would run: claude mcp add sweet-shrink/.test(r.stdout)) {
-    assert.match(r.stdout, /src\/mcp-servers\/sweet-shrink\/index\.js npx @modelcontextprotocol\/server-filesystem \/tmp/);
-    assert.doesNotMatch(r.stdout, /npx -y sweet-shrink/);
+  if (/would run: claude mcp add caveman-shrink/.test(r.stdout)) {
+    assert.match(r.stdout, /caveman-shrink npx @modelcontextprotocol\/server-filesystem \/tmp/);
   }
 });
 
@@ -166,7 +178,7 @@ test('--all does NOT auto-enable mcp-shrink (no sensible default upstream)', () 
   assert.equal(r.status, 0);
   // Whether or not claude is on PATH, the wiring banner should not appear
   // because withMcpShrink stays false under --all alone.
-  assert.doesNotMatch(r.stdout, /wiring sweet-shrink MCP proxy/);
+  assert.doesNotMatch(r.stdout, /wiring caveman-shrink MCP proxy/);
 });
 
 test('--help discloses --config-dir scope', () => {

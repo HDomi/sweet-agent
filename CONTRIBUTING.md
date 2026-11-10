@@ -1,192 +1,48 @@
-# Contributing to sweet
+# Contributing to Caveman
 
-Thanks for considering a contribution. Sweet is a multi-agent skill that
-makes 30+ AI coding agents talk in compressed sweet-style prose. Most
-contributions fall into one of three buckets:
+Thanks for helping make the cave bigger. PRs are welcome: new compressors,
+integrations, agent recipes, bug fixes, docs.
 
-1. **Editing skill prose** — change how sweet speaks (Korean 반말 persona, "오빠" 호칭), what intensity levels do, what slash commands trigger.
-2. **Adding a new agent** — wire a fresh editor/CLI/IDE into the unified installer.
-3. **Fixing the hooks or installer** — Claude Code hooks, the Node installer, the per-repo init script.
+A new content-type compressor can add support for CSV, HTML, SQL dumps, notebook
+output, or OpenAPI specs. Each one makes Caveman
+useful to a whole new slice of payloads. Start from an existing one under
+`engine/` and copy its shape.
 
-Sweet like simple. Small focused PR > big rewrite.
+## Sign your commits (DCO)
 
----
-
-## Quick orientation
-
-The repo distributes one skill (sweet) plus a handful of sub-skills
-(sweet-commit, sweet-review, sweet-compress, sweetcrew-*) to many
-agents through different distribution mechanisms (Claude Code plugin, Codex
-plugin, Gemini extension, Cursor/Windsurf/Cline rule files, `npx skills` for
-the long tail). A single Node installer at `bin/install.js` detects which
-agents are on the user's machine and installs the right thing for each.
-
-Sources of truth live at the **top level** of the repo. Agent-specific
-copies live under `plugins/sweet-agent/` and similar mirror dirs — those are
-**rebuilt by CI** and edits there are reverted.
-
----
-
-## What to edit (sources of truth)
-
-| I want to change... | Edit this file |
-|---|---|
-| Sweet behavior (intensity levels, voice, rules) | `skills/sweet/SKILL.md` |
-| Sweet commit-message format | `skills/sweet-commit/SKILL.md` |
-| Sweet code-review format | `skills/sweet-review/SKILL.md` |
-| Sweet compress logic | `skills/sweet-compress/SKILL.md` and `skills/sweet-compress/scripts/` |
-| Sweet quick-reference card | `skills/sweet-help/SKILL.md` |
-| Sweetcrew decision guide (when to delegate to subagents) | `skills/sweetcrew/SKILL.md` |
-| sweetcrew subagent definitions | `agents/sweetcrew-investigator.md`, `agents/sweetcrew-builder.md`, `agents/sweetcrew-reviewer.md` |
-| Auto-activation rule body (Cursor/Windsurf/Cline/Copilot) | `src/rules/sweet-activate.md` |
-| Add support for a new agent | `bin/install.js` (PROVIDERS array) |
-| Per-repo init script (drops rule files into a user's repo) | `src/tools/sweet-init.js` |
-| Claude Code hooks | `src/hooks/sweet-activate.js`, `src/hooks/sweet-mode-tracker.js`, `src/hooks/sweet-config.js`, `src/hooks/sweet-statusline.sh`, `src/hooks/sweet-statusline.ps1` |
-| Settings.json read/write helpers | `bin/lib/settings.js` |
-| MCP shrink server | `src/mcp-servers/sweet-shrink/` |
-
-That's it. Every other markdown file with `SKILL.md` in the path is a copy.
-
----
-
-## What NOT to edit (CI-generated mirrors)
-
-Edits to these files are wiped by the next CI run. The
-`.github/workflows/sync-skill.yml` job rebuilds them from the sources above
-on every push to `main`.
-
-| Path | Rebuilt from |
-|------|--------------|
-| `plugins/sweet-agent/skills/sweet/SKILL.md` | `skills/sweet/SKILL.md` |
-| `plugins/sweet-agent/skills/sweet-compress/{SKILL.md, scripts/}` | `skills/sweet-compress/{SKILL.md, scripts/}` |
-| `plugins/sweet-agent/skills/sweetcrew/SKILL.md` | `skills/sweetcrew/SKILL.md` |
-| `plugins/sweet-agent/agents/sweetcrew-*.md` | `agents/sweetcrew-*.md` |
-| `dist/sweet.skill` | ZIP of `skills/sweet/` (gitignored; rebuilt by CI on each push to `main`) |
-
-`sweet-commit`, `sweet-review`, `sweet-help`, and `sweet-stats` are **not** mirrored under `plugins/sweet-agent/skills/` by CI. Claude Code reaches them through the standalone hook + skill install path and `npx skills` carries them to other agents. If you see `plugins/sweet-agent/skills/sweet-stats/` checked in, treat it as a legacy hand-committed copy — the workflow in `.github/workflows/sync-skill.yml` does not touch it.
-
-When in doubt: if the file lives under `plugins/`, `dist/`, or any agent
-dotdir mirror, it's a build artifact. Edit the top-level source instead.
-
----
-
-## Adding a new agent
-
-The unified Node installer at `bin/install.js` is the **single source of
-truth** for the supported-agent list. The README and `INSTALL.md` install
-tables mirror it by hand — bash and PowerShell shims at the repo root just
-delegate to it.
-
-1. Confirm the agent has a distribution path. Either:
-   - it has a profile slug in upstream [vercel-labs/skills](https://github.com/vercel-labs/skills) (most common), or
-   - it has a native plugin / extension / rule-file mechanism we can target.
-2. Append a row to the `PROVIDERS` array in `bin/install.js`. Each row needs:
-   - `id` — short kebab-case identifier (e.g. `windsurf`)
-   - `label` — human display name (e.g. `Windsurf`)
-   - `mech` — distribution mechanism (`plugin`, `extension`, `rules-file`, `skills-cli`, …)
-   - `detect` — clause spec like `command:foo||dir:$HOME/x` describing how to detect the agent
-   - `profile` — the vercel-labs/skills slug, if applicable
-   - `soft: true` — set when detection is config-dir-only (best-effort)
-3. Run `node bin/install.js --list` and confirm the new row renders correctly. Soft probes should show as `(soft)`.
-4. Add a row to the install tables in `README.md` and `INSTALL.md`.
-5. No CI changes needed — the workflow re-reads `bin/install.js` automatically.
-
-Bad slug? `npx skills add` fails at install **runtime**, not at install-script
-load. Always verify the slug against the vercel-labs/skills README before
-merging.
-
----
-
-## Adding a new skill
-
-1. Create `skills/<name>/SKILL.md` with frontmatter:
-   ```yaml
-   ---
-   name: <name>
-   description: <one sentence, present tense>
-   ---
-   ```
-2. Create `skills/<name>/README.md` — human-facing summary, install hint, example.
-3. Add `skills/<name>/scripts/` if the skill ships helpers (Python or Node).
-4. If the skill should be in the Claude Code plugin, add a sync step to `.github/workflows/sync-skill.yml` so CI mirrors it into `plugins/sweet-agent/skills/<name>/`.
-5. If it's user-invocable as a slash command, add a row to the slash-command table in `README.md` and `INSTALL.md`.
-6. Add an eval prompt to `evals/prompts/en.txt` if you want the eval harness to score it.
-
----
-
-## Running tests
+This project uses the [Developer Certificate of Origin](https://developercertificate.org/).
+It's a one-line promise that you wrote the code (or have the right to contribute
+it). Add a sign-off to every commit:
 
 ```bash
-# Installer unit + e2e tests (Node)
-npm test
-
-# Compress-skill safety tests (Python)
-python3 -m unittest tests.test_compress_safety
-
-# Per-repo init tests
-node tests/test_sweet_init.js
-
-# Flag-file symlink-safety tests
-node tests/test_symlink_flag.js
+git commit -s -m "your message"
 ```
 
-CI runs all of the above on every PR. If any test depends on a network or
-external SDK, it must skip cleanly when the dependency is missing — never
-gate the whole suite on optional creds.
+That appends a `Signed-off-by: Your Name <your@email>` trailer. No CLA, no forms.
 
----
+## Licensing of contributions
 
-## Running benchmarks and evals
+Whole repo is [Apache-2.0](LICENSE) (see [LICENSING.md](LICENSING.md)).
+Contributions are inbound = outbound: you license your change under the same
+Apache-2.0 terms. Simple.
 
-Benchmarks hit the real Claude API and record raw token counts:
+## Where changes land
 
-```bash
-uv run python benchmarks/run.py     # needs ANTHROPIC_API_KEY in .env.local
-```
+Open a pull request against this repository. A maintainer checks license scope,
+tests, generated artifacts, and security boundaries for affected directory.
+Profile-only changes follow narrower process in
+[`docs/CONTRIBUTING_PROFILES.md`](docs/CONTRIBUTING_PROFILES.md).
 
-Evals are a three-arm offline harness (`__baseline__`, `__terse__`, each skill):
+Keep generated files in same pull request as their source and retain commit
+authorship and DCO sign-off.
 
-```bash
-python evals/llm_run.py             # regenerates evals/snapshots/results.json
-python evals/measure.py             # reads snapshot, prints token deltas
-```
+## Before you open a PR
 
-Snapshots are committed to git. Only regenerate when a `SKILL.md` or
-`evals/prompts/en.txt` changes. Numbers in `README.md` and any docs come from
-real runs — never invent or round.
+- Build and test the package you touched (`go test ./...`, `pnpm test`, or
+  `pytest`, depending on the directory).
+- Keep it byte-safe: compressors must round-trip or degrade gracefully. Never
+  silently corrupt a payload. On any parse problem, pass the bytes through
+  untouched.
+- Match the surrounding style. Small, focused PRs review fastest.
 
----
-
-## Pull-request guidelines
-
-- **Conventional Commits** for the commit subject. See `skills/sweet-commit/SKILL.md` for the format we use here.
-- **One concern per PR.** A README copy-edit and an installer fix go in separate PRs.
-- **Update `package.json` `files`** if you add a new top-level directory the installer needs to ship to npm. Files outside that array don't get published.
-- **Show before/after** for prose changes to any `SKILL.md`. One sentence on why the new wording is better.
-- **Mention the CI sync.** If you edited a source-of-truth file, note it: "CI will resync `plugins/sweet-agent/skills/...` on merge."
-
-PR descriptions don't need to be long. Sweet style fine. Just say what change, why.
-
----
-
-## Code style
-
-A handful of invariants that have bitten us before. Keep them.
-
-- **Hooks must silent-fail on filesystem errors.** A `try/catch` that swallows the error is correct here. A hook that throws blocks Claude Code session start — that's user-facing breakage. See existing patterns in `src/hooks/sweet-activate.js`.
-- **Settings.json reads and writes go through `bin/lib/settings.js`.** It tolerates JSONC comments. Direct `JSON.parse` on a user's `settings.json` will crash on a single `// comment`.
-- **Validate hook entries before writing.** Use `validateHookFields()` in `bin/lib/settings.js`. Claude Code's Zod schema silently discards the **entire** `settings.json` on a single bad hook entry — one malformed write poisons the user's whole config.
-- **Symlink-safe flag writes via `safeWriteFlag()`** in `src/hooks/sweet-config.js`. The flag file lives at a predictable path under `$CLAUDE_CONFIG_DIR/`; without `O_NOFOLLOW` and a parent-symlink check, a local attacker can clobber any file the user can write.
-- **Honor `CLAUDE_CONFIG_DIR`.** Hooks, the installer, and the statusline scripts must respect it — never hardcode `~/.claude`.
-- **`install.sh` and `install.ps1` at the repo root are 30-line shims** that delegate to `bin/install.js`. Don't re-add per-OS install logic to them. Quoting bugs that way lie.
-
----
-
-## Ideas
-
-See [issues labeled `good first issue`](../../issues?q=label%3A%22good+first+issue%22)
-for starter tasks. Or grep `TODO` / `FIXME` in `src/hooks/`, `bin/`, `src/tools/` —
-each one is a real lead.
-
-Sweet like contribution. You bring rock, sweet put rock in pile. Pile
-get bigger. Brain still big.
+Questions: open an issue at https://github.com/HDomi/sweet-agent/issues.

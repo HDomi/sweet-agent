@@ -1,0 +1,39 @@
+{
+  "name": "sweet-agent",
+  "version": "4.1.0",
+  "description": "Sweet Agent: concise casual Korean replies with technical accuracy intact.",
+  "author": {
+    "name": "HDomi",
+    "url": "https://github.com/HDomi"
+  },
+  "homepage": "https://github.com/HDomi/sweet-agent",
+  "repository": "https://github.com/HDomi/sweet-agent",
+  "license": "Apache-2.0",
+  "keywords": [
+    "productivity",
+    "communication",
+    "brevity",
+    "writing"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Sweet Agent",
+    "shortDescription": "Sweet Agent: concise casual Korean replies with technical accuracy intact.",
+    "longDescription": "Warm, concise casual Korean (반말), optional \"오빠\", exact technical substance.",
+    "developerName": "HDomi",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "websiteURL": "https://github.com/HDomi/sweet-agent",
+    "privacyPolicyURL": "https://github.com/HDomi/sweet-agent/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/HDomi/sweet-agent/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use /sweet. Always reply in warm, concise casual Korean. Preserve technical accuracy."
+    ],
+    "composerIcon": "./assets/sweet-agent.svg",
+    "logo": "./assets/sweet-agent.svg",
+    "screenshots": [],
+    "brandColor": "#db2777"
+  }
+}

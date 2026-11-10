@@ -1,0 +1,131 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const proxy = path.join(root, 'src', 'mcp-servers', 'caveman-shrink', 'index.js');
+
+function isAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// 20s ceiling: starting two node processes took over 5s on a loaded machine.
+async function waitUntil(predicate, { timeoutMs = 20_000, intervalMs = 20 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await sleep(intervalMs);
+  }
+  throw new Error('waitUntil: condition never became true');
+}
+
+test('caveman-shrink drains a large final response without requiring a trailing newline', () => {
+  const size = 1_500_000;
+  const upstream = `process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:1,result:{payload:'x'.repeat(${size})}}))`;
+  const result = spawnSync(process.execPath, [proxy, process.execPath, '-e', upstream], {
+    encoding: 'utf8',
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const message = JSON.parse(result.stdout);
+  assert.equal(message.result.payload.length, size);
+});
+
+test('caveman-shrink preserves UTF-8 code points split across upstream chunks', () => {
+  const upstream = [
+    "const bytes=Buffer.from(JSON.stringify({jsonrpc:'2.0',id:1,result:{payload:'🙂'}}))",
+    "const split=bytes.indexOf(Buffer.from('🙂'))+1",
+    "process.stdout.write(bytes.subarray(0,split))",
+    "setImmediate(()=>process.stdout.write(bytes.subarray(split)))",
+  ].join(';');
+  const result = spawnSync(process.execPath, [proxy, process.execPath, '-e', upstream], {
+    encoding: 'utf8',
+    maxBuffer: 1024 * 1024,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).result.payload, '🙂');
+});
+
+test('caveman-shrink passes a list with a null entry through and keeps running', () => {
+  const upstream = [
+    "console.log(JSON.stringify({jsonrpc:'2.0',id:1,result:{tools:[null,{name:'t'}]}}))",
+    "console.log(JSON.stringify({jsonrpc:'2.0',id:2,result:{}}))",
+  ].join(';');
+  const result = spawnSync(process.execPath, [proxy, process.execPath, '-e', upstream], {
+    encoding: 'utf8',
+    maxBuffer: 1024 * 1024,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const [first, second] = result.stdout.trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(first.result.tools, [null, { name: 't' }]);
+  assert.equal(second.id, 2);
+});
+
+// JSON.parse accepts a far deeper object than compressDescriptionsInPlace can
+// recurse over, so a deeply nested inputSchema raises RangeError inside the
+// transform rather than in the parse above it. Before the transform was wrapped
+// that killed the wrapper and the host lost the upstream server, exactly as a
+// null list entry did (#1435).
+test('caveman-shrink survives an inputSchema too deep to walk and keeps running', () => {
+  const depth = 200000;
+  const upstream = [
+    `const deep = '{"description":"a b c","properties":'.repeat(${depth}) + '{"x":1}' + '}'.repeat(${depth})`,
+    `console.log('{"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"t","inputSchema":' + deep + '}]}}')`,
+    `console.log(JSON.stringify({jsonrpc:'2.0',id:2,result:{}}))`,
+  ].join(';');
+  const result = spawnSync(process.execPath, [proxy, process.execPath, '-e', upstream], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    env: { ...process.env, CAVEMAN_SHRINK_DEBUG: '1' },
+  });
+  assert.equal(result.status, 0, result.stderr.slice(0, 400));
+  const lines = result.stdout.trim().split('\n');
+  assert.equal(lines.length, 2);
+  // The response still reaches the client, and the one after it is not lost.
+  assert.equal(JSON.parse(lines[0]).result.tools[0].name, 't');
+  assert.equal(JSON.parse(lines[1]).id, 2);
+  // The fail-open is diagnosable rather than silent.
+  assert.match(result.stderr, /transform failed, passing response through/);
+});
+
+for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+  test(`caveman-shrink forwards ${signal} to its spawned upstream process`, async () => {
+    const pidFile = path.join(os.tmpdir(), `caveman-shrink-${signal}-${process.pid}-${Date.now()}.pid`);
+    const upstream = [
+      `require('fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid))`,
+      'process.stdin.resume()',
+      'setInterval(() => {}, 1000000)',
+    ].join(';');
+
+    const wrapper = spawn(process.execPath, [proxy, process.execPath, '-e', upstream], { stdio: 'ignore' });
+
+    try {
+      // writeFileSync creates the file before it fills it, so an early read can
+      // be '' — and Number('') is 0, which isAlive() reports as alive forever
+      // (kill(0, 0) signals our own process group).
+      let upstreamPid = 0;
+      await waitUntil(() => {
+        try { upstreamPid = Number(fs.readFileSync(pidFile, 'utf8')); } catch { upstreamPid = 0; }
+        return upstreamPid > 0;
+      });
+      assert.ok(isAlive(upstreamPid), 'upstream process should be running before the signal');
+
+      wrapper.kill(signal);
+      await waitUntil(() => wrapper.exitCode !== null || wrapper.signalCode !== null);
+      await waitUntil(() => !isAlive(upstreamPid));
+    } finally {
+      fs.rmSync(pidFile, { force: true });
+      if (isAlive(wrapper.pid)) wrapper.kill('SIGKILL');
+    }
+  });
+}

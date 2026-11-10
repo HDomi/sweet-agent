@@ -1,2 +1,2 @@
-description = "이번 세션 실제 토큰 사용량 + 누적 절감 + USD. --share 로 공유용 한 줄."
-prompt = "/sweet-stats {{args}}"
+description = "sweet-stats: concise Korean Sweet replies"
+prompt = "Follow the sweet-stats skill. Arguments: {{args}}. Always reply in Korean. Keep code, paths and commands verbatim."

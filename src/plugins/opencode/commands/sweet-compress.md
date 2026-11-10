@@ -1,14 +1,17 @@
 ---
-description: 마크다운/텍스트 파일을 압축해서 토큰 절약
+description: Compress a markdown/text file into caveman format to save tokens
 ---
-이 파일을 압축한다: $ARGUMENTS
+Compress the file at: $ARGUMENTS
 
-주어진 경로에 `sweet-compress` 스킬을 돌린다. 이 스킬은 산문을 짧은 압축 문체로
-다시 쓴다 — 조사·군더더기·완충 표현을 버리되, 코드 블록, 인라인 코드, URL, 파일 경로,
-명령어, 마크다운 구조는 정확히 보존한다. 파일의 주 언어를 따라간다 — 한국어 파일은
-한국어로, 영어 파일은 영어로. 번역하지 않는다. 원본은 덮어쓰기 전에
-`<파일>.original.md` 로 백업한다.
+Run the `caveman-compress` skill against the given filepath. The skill rewrites
+prose into terse caveman style — drops articles, filler, hedging — while
+preserving code blocks, inline code, URLs, file paths, commands, and markdown
+structure exactly. Original is backed up as `<file>.original.md` before
+overwrite.
 
-자연어 파일만 압축한다 (`.md`, `.txt`, `.typ`, `.tex`, 확장자 없음).
-소스·설정 파일은 거부한다 (`.py`, `.js`, `.ts`, `.json`, `.yaml`, `.toml`, `.sh` 등).
-기존 `*.original.md` 백업은 절대 압축하지 않는다.
+Only compress natural-language files (`.md`, `.txt`, `.typ`, `.tex`,
+extensionless). Refuse source/config files (`.py`, `.js`, `.ts`, `.json`,
+`.yaml`, `.toml`, `.sh`, etc.). Never compress an existing `*.original.md`
+backup.
+
+Always reply in Korean. Keep technical substance, code, commands, paths and errors exact. Persisted artifacts follow repository language conventions. Never omit verification results.

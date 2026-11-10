@@ -1,21 +1,24 @@
 ---
 name: sweet-compress
 description: >
-  자연어 메모리 파일(CLAUDE.md, 할 일, 설정 메모)을 압축해서 입력 토큰을 줄인다.
-  기술적 내용, 코드, URL, 구조는 전부 보존한다. 압축본이 원본을 덮어쓰고,
-  사람이 읽을 수 있는 백업은 FILE.original.md 로 저장한다. 한국어 파일과 영어 파일 모두 처리한다.
-  트리거: /sweet-compress 파일경로, 또는 "메모리 파일 압축해줘"
+  Compress a memory file such as CLAUDE.md or a todo list into caveman format
+  to save input tokens, keeping a readable backup. Sends the file's text to the
+  configured model provider. Trigger: /sweet-compress.
 ---
 
 # Sweet Compress
 
 ## Purpose
 
-Compress natural language files (CLAUDE.md, todos, preferences) into sweet-speak to reduce input tokens. Compressed version overwrites original. Human-readable backup saved as `<filename>.original.md`.
+> **Data leaves the machine.** Compression sends the file's full text to the model provider that `scripts/compress.py` is configured for: the `claude` CLI, the Anthropic API, or an OpenAI-compatible endpoint. Files whose names look like secrets (`.env`, `credentials`, `secrets`, `.netrc`, …) are refused before they are read, and a file whose text holds a credential (a private key block, or a cloud, Git host or model API token) is refused before anything is sent. Don't compress a file the provider shouldn't see.
+
+Compress natural language files (CLAUDE.md, todos, preferences) into caveman-speak to reduce input tokens. Compressed version overwrites original. Human-readable backup saved as `<filename>.original.md`, but NOT beside the source file — it lives in an out-of-tree data dir (`$XDG_DATA_HOME/sweet-compress/backups/<parent-dir-name>/`, or `%LOCALAPPDATA%\caveman-compress\backups\<parent-dir-name>\` on Windows) so skill auto-loaders don't re-ingest it as a live file.
 
 ## Trigger
 
 `/sweet-compress <filepath>` or when user asks to compress a memory file.
+
+**Requires an explicit filepath.** If the user pastes raw text instead of naming a file, do NOT improvise an inline compression — ask them for the filepath to compress, or offer to save the pasted text to a file first. Writing your own reasoning/commentary about the request into the compressed output (e.g. "User passed text directly, not a filepath...") is the exact failure this guards against — never let that leak into a saved file.
 
 ## Process
 
@@ -37,6 +40,8 @@ python3 -m scripts <absolute_filepath>
 
 ## Compression Rules
 
+Preserve the source prose language; never translate. Korean input stays Korean and English input stays English. This file operation does not inherit the chat reply-language requirement.
+
 ### Remove
 - Articles: a, an, the
 - Filler: just, really, basically, actually, simply, essentially, generally
@@ -55,30 +60,6 @@ python3 -m scripts <absolute_filepath>
 - Proper nouns (project names, people, companies)
 - Dates, version numbers, numeric values
 - Environment variables (`$HOME`, `NODE_ENV`)
-
-### Preserve MEANING (rules files are instructions, not prose)
-
-A compressed `CLAUDE.md` is what the agent obeys next session. These three
-classes of word change what the agent DOES, so they survive compression even
-when they cost tokens:
-
-- **Polarity** — `never`, `don't`, `avoid`, `no`, 금지, 절대, 마라. "Never mock
-  the DB in integration tests" may become "No DB mocking in integration tests";
-  it may not become "Mock the DB in integration tests".
-- **Conditions and scope** — `unless`, `only`, `except`, `if`, `when`, ~할 때만,
-  ~인 경우. "Avoid `any` unless unavoidable" keeps the escape hatch.
-- **Order and obligation** — `before`, `after`, `first`, `must`, `always`,
-  `required` vs `optional`, 먼저, 반드시, 필수/선택. "Run migration before
-  deploy" is not "Run migration, deploy".
-
-Drop the *rationale* only when the rule survives intact. When a rule and its
-reason both fit in one short sentence, keep both — a rule with a reason gets
-followed more reliably than a bare imperative.
-
-`scripts/validate.py` enforces the polarity half automatically: if a section
-carried a prohibition and the compressed section carries no negation at all,
-validation fails and the fix pass runs. It cannot check conditions or ordering
-— that is on you.
 
 ### Preserve Structure
 - All markdown headings (keep exact heading text, compress body below)
@@ -111,30 +92,9 @@ If file contains code blocks:
 - Only compress text outside them
 - Do not merge sections around code
 
-## Korean files (한국어 파일)
-
-Detect the file's dominant language and compress in that language. Never translate — a Korean CLAUDE.md stays Korean, an English one stays English.
-
-### Remove (한국어)
-- 조사: 은/는/이/가/을/를/에서/으로 — only when meaning stays unambiguous
-- 군더더기: 그냥, 진짜, 사실, 약간, 좀, 일단, 아무튼
-- 상투어: "~하시면 됩니다", "~해주세요", "참고로", "덧붙이면"
-- 완충 표현: 아마, ~인 것 같습니다, ~일 수도 있습니다, ~하는 것이 좋을 것 같습니다
-- 접속 군더더기: 그러나, 또한, 게다가, 그리고 나서
-
-### Compress (한국어)
-- 개조식 종결: "테스트 실행" not "테스트를 실행해야 합니다"
-- 명사형으로 끝내도 OK
-- 짧은 동의어: "고치기" not "수정 작업 진행", "쓰기" not "활용하기"
-- "~해야 합니다", "반드시 ~하세요", "잊지 마세요" 는 버리고 행동만 남긴다
-- 새 약어를 만들지 않는다 (설정→셋, 구현→임플). 토큰 절약 0이고 가독성만 손해
-
-### Never touch (한국어 파일에서도 동일)
-Code blocks, inline code, URLs, file paths, commands, English technical terms, API names, environment variables, version numbers. These stay byte-identical regardless of the file's language.
-
 ## Pattern
 
-Original (English):
+Original:
 > You should always make sure to run the test suite before pushing any changes to the main branch. This is important because it helps catch bugs early and prevents broken builds from being deployed to production.
 
 Compressed:
@@ -146,23 +106,11 @@ Original:
 Compressed:
 > Microservices architecture. API gateway route all requests to services. Auth service manage user sessions + JWT tokens.
 
-Original (한국어):
-> main 브랜치에 변경사항을 푸시하기 전에는 반드시 테스트 스위트를 실행하셔야 합니다. 이것은 버그를 조기에 발견하고 깨진 빌드가 프로덕션에 배포되는 것을 방지하는 데 도움이 되기 때문에 중요합니다.
-
-Compressed:
-> main 에 push 전 테스트 실행. 버그 조기 발견, 깨진 빌드 프로덕션 배포 방지.
-
-Original (한국어):
-> 이 애플리케이션은 다음과 같은 컴포넌트로 구성된 마이크로서비스 아키텍처를 사용하고 있습니다. API 게이트웨이가 들어오는 모든 요청을 처리하여 적절한 서비스로 라우팅합니다. 인증 서비스는 사용자 세션과 JWT 토큰을 관리하는 역할을 담당합니다.
-
-Compressed:
-> 마이크로서비스 아키텍처. API 게이트웨이가 모든 요청 받아 서비스로 라우팅. 인증 서비스가 사용자 세션 + JWT 토큰 관리.
-
 ## Boundaries
 
 - ONLY compress natural language files (.md, .txt, .typ, .typst, .tex, extensionless)
 - NEVER modify: .py, .js, .ts, .json, .yaml, .yml, .toml, .env, .lock, .css, .html, .xml, .sql, .sh
 - If file has mixed content (prose + code), compress ONLY the prose sections
 - If unsure whether something is code or prose, leave it unchanged
-- Original file is backed up as FILE.original.md before overwriting
+- Original file is backed up as FILE.original.md before overwriting — in the out-of-tree backup data dir (see Purpose), not beside the source file
 - Never compress FILE.original.md (skip it)

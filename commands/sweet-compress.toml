@@ -1,0 +1,2 @@
+description = "sweet-compress: concise Korean Sweet replies"
+prompt = "Follow the sweet-compress skill. Arguments: {{args}}. Always reply in Korean. Keep code, paths and commands verbatim."

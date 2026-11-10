@@ -1,0 +1,12 @@
+{
+  "name": "sweet-agent",
+  "displayName": "Sweet Agent",
+  "description": "Sweet Agent: concise casual Korean replies with technical accuracy intact.",
+  "version": "4.1.0",
+  "author": {
+    "name": "HDomi",
+    "url": "https://github.com/HDomi"
+  },
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks-cursor.json"
+}
